@@ -7,10 +7,13 @@
 namespace esphome {
 namespace max30105 {
 
-class MAX30105Sensor : public sensor::Sensor, public PollingComponent, public i2c::I2CDevice
-{
-    
+class MAX30105Sensor : public sensor::Sensor,
+                       public PollingComponent,
+                       public i2c::I2CDevice {
+public:
+    void setup() override;
+private:
 };
 
-}
-}
+} // namespace max30105
+} // namespace esphome

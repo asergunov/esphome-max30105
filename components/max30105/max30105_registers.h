@@ -1,8 +1,9 @@
-#pragma once
-
 /// Datasheet
 /// https://cdn.sparkfun.com/assets/learn_tutorials/5/7/7/MAX30105_3.pdf
+#pragma once
 
+
+#include <type_traits>
 
 namespace max30105 {
 
