@@ -1,0 +1,5 @@
+
+/.cache
+.esphome
+**/__pycache__/*
+compile_commands.json

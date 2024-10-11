@@ -1,17 +1,158 @@
 #include "max30105.h"
 
-#include "max30105_registers.h"
+#include "esp_log.h"
 
 #include "esphome/core/log.h"
-
-
-using uint8_t = unsigned char;
+#include "max30105_registers.h"
+#include <cassert>
+#include <cstdint>
 
 namespace esphome {
 
 namespace max30105 {
-using namespace ::max30105::registers;
 
+static const char *const TAG = "max44009.sensor";
+
+template<typename Field> void setField(typename Field::REG& reg, uint8_t value)
+{
+  Field field(reg);
+  field = value;
+}
+
+MAX30105Sensor::MAX30105Sensor() {
+  setField<SMP_AVE>(_fifoConfiguration, 4);
+  FIFO_ROLLOVER_EN rolloveEnabled(_fifoConfiguration);
+  MODE fifoMode(_modeConfiguration);
+  ADC_RGE adcRange(_sp02Configuration);
+  SR sampleRate(_sp02Configuration);
+  LED_PW ledPulseWidth(_sp02Configuration);
+
+  rolloveEnabled = true;
+  fifoMode = MODE::MultiLed;
+  adcRange = 4096;
+  sampleRate = 400;
+  ledPulseWidth = 411;
+}
+
+void MAX30105Sensor::setup() {
+  if (!this->read(_partId)) {
+    ESP_LOGE(TAG, "Can't read PART_ID");
+    status_set_error();
+    return;
+  }
+  if (_partId != PART_ID::POR_STATE) {
+    ESP_LOGE(TAG, "PART_ID is not the one expected");
+    status_set_error();
+    return;
+  }
+
+  if (!this->read(_revisionId)) {
+    ESP_LOGE(TAG, "Can't red REV_ID");
+    status_set_error();
+    return;
+  }
+
+  softReset();
+  _doAfterReset = [this] {
+    if (!this->write(_fifoConfiguration)) {
+      ESP_LOGE(TAG, "Can't write Fifo Configuration");
+      status_set_error();
+    }
+    if (!this->write(_modeConfiguration)) {
+      ESP_LOGE(TAG, "Can't write Mode Configuration");
+      status_set_error();
+    }
+    if (!this->write(_sp02Configuration)) {
+      ESP_LOGE(TAG, "Can't write SPo2 Configuration");
+      status_set_error();
+    }
+  };
+}
+
+void MAX30105Sensor::update() {
 
 }
+
+bool MAX30105Sensor::softReset() {
+  if (_resetInProgress) {
+    ESP_LOGW(TAG, "Reset in progress");
+    return false;
+  }
+  RESET reset(_modeConfiguration);
+  reset = true;
+  if (!write(_modeConfiguration)) {
+    ESP_LOGE(TAG, "Cant write Mode Configuration");
+    status_set_error();
+    return false;
+  }
+  _resetInProgress = true;
+  return true;
+}
+
+void MAX30105Sensor::loop() {
+  if (_resetInProgress) {
+    if (!read(_modeConfiguration)) {
+      ESP_LOGE(TAG, "Can't get FIFO_RD_PTR");
+      status_set_error();
+      return;
+    }
+    if (RESET(_modeConfiguration)) {
+      return;
+    }
+    _resetInProgress = false;
+    if (_doAfterReset) {
+      _doAfterReset();
+      _doAfterReset = {};
+    }
+  }
+
+  FIFO_RD_PTR::REG rdReg;
+  FIFO_WR_PTR::REG wrReg;
+  if (!this->read(rdReg)) {
+    ESP_LOGE(TAG, "Can't get FIFO_RD_PTR");
+    status_set_error();
+    return;
+  }
+  if (!this->read(wrReg)) {
+    ESP_LOGE(TAG, "Can't get FIFO_WR_PTR");
+    status_set_error();
+    return;
+  }
+
+  const uint8_t samplesToRead = (FIFO_WR_PTR(wrReg) - FIFO_RD_PTR(rdReg)) % 32;
+  if (samplesToRead == 0) {
+    // nothing to read
+    return;
+  }
+
+  const auto numLeds = MODE(_modeConfiguration).numLeds();
+
+  const uint16_t bytesToRead = samplesToRead * numLeds * 3;
+  uint8_t buffer[32 * 3 * 12];
+  //   assert(bytesToRead < sizeof(buffer));
+  if (!this->read_bytes(FIFO_DATA::REG_ADR, buffer, bytesToRead)) {
+    ESP_LOGE(TAG, "Can't get DATA");
+    status_set_error();
+    return;
+  }
+
+  auto *p = buffer;
+  auto decode_to = [&](std::deque<uint32_t> container) {
+    uint32_t result = 0;
+    for (uint8_t i = 0; i < 3; ++i)
+      result = (result << 8) + *(p++);
+    container.push_back(result);
+    while (container.size() > _pointLimit)
+      container.pop_front();
+  };
+  for (uint8_t i = 0; i < samplesToRead; ++i) {
+    decode_to(_red);
+    if (numLeds > 1)
+      decode_to(_green);
+    if (numLeds > 2)
+      decode_to(_ir);
+  }
+}
+
+} // namespace max30105
 } // namespace esphome

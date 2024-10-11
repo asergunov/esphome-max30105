@@ -7,6 +7,9 @@ from esphome.const import (
     DEVICE_CLASS_ILLUMINANCE,
     STATE_CLASS_MEASUREMENT,
     UNIT_LUX,
+    CONF_INFRARED,
+    CONF_GREEN,
+    CONF_RED
 )
 
 CODEOWNERS = ["@asergunov"]
@@ -25,18 +28,28 @@ MODE_OPTIONS = {
 }
 
 CONFIG_SCHEMA = (
-    sensor.sensor_schema(
-        unit_of_measurement=UNIT_LUX,
-        accuracy_decimals=3,
-        device_class=DEVICE_CLASS_ILLUMINANCE,
-        state_class=STATE_CLASS_MEASUREMENT,
-    )
-    .extend(
+    cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(MAX30105Sensor),
-            cv.Optional(CONF_MODE, default="low_power"): cv.enum(
-                MODE_OPTIONS, lower=True
+            cv.Optional(CONF_INFRARED): sensor.sensor_schema(
+                unit_of_measurement=UNIT_LUX,
+                accuracy_decimals=2,
+                device_class=DEVICE_CLASS_ILLUMINANCE,
+                state_class=STATE_CLASS_MEASUREMENT,
             ),
+            cv.Optional(CONF_GREEN): sensor.sensor_schema(
+                unit_of_measurement=UNIT_LUX,
+                accuracy_decimals=2,
+                device_class=DEVICE_CLASS_ILLUMINANCE,
+                state_class=STATE_CLASS_MEASUREMENT,
+            ),
+            cv.Optional(CONF_RED): sensor.sensor_schema(
+                unit_of_measurement=UNIT_LUX,
+                accuracy_decimals=2,
+                device_class=DEVICE_CLASS_ILLUMINANCE,
+                state_class=STATE_CLASS_MEASUREMENT,
+            ),
+
         }
     )
     .extend(cv.polling_component_schema("60s"))
@@ -48,6 +61,15 @@ async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)
-    await sensor.register_sensor(var, config)
 
-    cg.add(var.set_mode(config[CONF_MODE]))
+    if red := config.get(CONF_RED):
+        sens = await sensor.new_sensor(red)
+        cg.add(var.set_red_sensor(sens))
+
+    if green := config.get(CONF_GREEN):
+        sens = await sensor.new_sensor(green)
+        cg.add(var.set_green_sensor(sens))
+
+    if ir := config.get(CONF_INFRARED):
+        sens = await sensor.new_sensor(ir)
+        cg.add(var.set_ir_sensor(sens))
