@@ -512,11 +512,11 @@ struct SlotField : Field<_REG, _LAST_BIT, _FIRST_BIT> {
 };
 
 using MultiLedMode1 = Register<0x11>;
-using SLOT2 = Slot<MultiLedMode1, 6, 4>;
-using SLOT1 = Slot<MultiLedMode1, 2, 0>;
+using SLOT2 = SlotField<MultiLedMode1, 6, 4>;
+using SLOT1 = SlotField<MultiLedMode1, 2, 0>;
 using MultiLedMode2 = Register<0x12>;
-using SLOT4 = Slot<MultiLedMode2, 6, 4>;
-using SLOT3 = Slot<MultiLedMode2, 2, 0>;
+using SLOT4 = SlotField<MultiLedMode2, 6, 4>;
+using SLOT3 = SlotField<MultiLedMode2, 2, 0>;
 
 /**
  * @brief Temperature Integer
