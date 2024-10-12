@@ -450,6 +450,13 @@ struct PARegister : Register<_REG> { /**
   static constexpr float typicalLedCurrent(uint8_t value) {
     return 50.f * 0xff / value;
   } // namespace registers
+
+  PARegister(PARegister::REG &reg) : Register<_REG>(reg) {}
+
+  PARegister &operator=(uint8_t value) {
+    Register<_REG>::operator=(value);
+    return *this;
+  }
 }; // namespace max30105
 
 using LED1_PA = PARegister<0x0c>;
