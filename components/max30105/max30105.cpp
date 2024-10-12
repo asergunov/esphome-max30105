@@ -84,8 +84,8 @@ void MAX30105Sensor::setup() {
       ESP_LOGE(TAG, "Can't write Overflow Counter");
       status_set_error();
     }
-  };
-});
+  });
+}
 
 void MAX30105Sensor::update() {
   auto publish_state = [](SensorData& sensor, Data& data) {
