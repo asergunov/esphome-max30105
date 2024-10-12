@@ -85,6 +85,10 @@ protected:
   ModeConfiguration _modeConfiguration;
   FIFOConfiguration _fifoConfiguration;
   SpO2Configuration _sp02Configuration;
+  LED1_PA _led1PulseAmplitude;
+  LED2_PA _led2PulseAmplitude;
+  LED3_PA _led3PulseAmplitude;
+  PILOT_PA _pilotPulseAmplitude;
 
   using counter_type = uint32_t;
   // Buffers

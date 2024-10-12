@@ -23,6 +23,11 @@ MAX30105Sensor::MAX30105Sensor() {
 
   LED_PW ledPulseWidth(_sp02Configuration);
   ledPulseWidth = 411;
+
+  _led1PulseAmplitude = 0x0f;
+  _led2PulseAmplitude = 0x0f;
+  _led3PulseAmplitude = 0x0f;
+  _pilotPulseAmplitude = 0x0f;
 }
 
 void MAX30105Sensor::dump_config() {
@@ -43,6 +48,14 @@ void MAX30105Sensor::dump_config() {
                 static_cast<uint8_t>(_fifoConfiguration));
   ESP_LOGCONFIG(TAG, "  SP02Configuration: %02X",
                 static_cast<uint8_t>(_sp02Configuration));
+  ESP_LOGCONFIG(TAG, "  Led1 Pulse Amplitude: %02X",
+                static_cast<uint8_t>(_led1PulseAmplitude));
+  ESP_LOGCONFIG(TAG, "  Led2 Pulse Amplitude: %02X",
+                static_cast<uint8_t>(_led2PulseAmplitude));
+  ESP_LOGCONFIG(TAG, "  Led3 Pulse Amplitude: %02X",
+                static_cast<uint8_t>(_led3PulseAmplitude));
+  ESP_LOGCONFIG(TAG, "  Pilot Pulse Amplitude: %02X",
+                static_cast<uint8_t>(_pilotPulseAmplitude));
   ESP_LOGCONFIG(TAG, "  State: %s", [&] {
     switch (_state) {
     case Ready:
@@ -89,10 +102,20 @@ void MAX30105Sensor::recoverConfiguration() {
   _state = Ready;
   softReset([fifoConfiguration = _fifoConfiguration,
              modeConfiguration = _modeConfiguration,
-             sp02Configuration = _sp02Configuration, this] {
+             sp02Configuration = _sp02Configuration,
+             led1PulseAmplitude = _led1PulseAmplitude,
+             led2PulseAmplitude = _led2PulseAmplitude,
+             led3PulseAmplitude = _led3PulseAmplitude,
+             pilotPulseAmplitude = _pilotPulseAmplitude, this] {
     writeConfig(_fifoConfiguration, fifoConfiguration, "Fifo Configuration");
     writeConfig(_modeConfiguration, modeConfiguration, "Mode Configuration");
     writeConfig(_sp02Configuration, sp02Configuration, "Sp02 Configuration");
+    
+    writeConfig(_led1PulseAmplitude, led1PulseAmplitude, "Fifo Configuration");
+    writeConfig(_led2PulseAmplitude, led2PulseAmplitude, "Mode Configuration");
+    writeConfig(_led3PulseAmplitude, led3PulseAmplitude, "Sp02 Configuration");
+    writeConfig(_pilotPulseAmplitude, pilotPulseAmplitude, "Sp02 Configuration");
+
 
     ESP_LOGD(TAG, "Resetting Read Pointer");
     FIFO_RD_PTR::REG rdReg;
@@ -178,8 +201,7 @@ void MAX30105Sensor::loop() {
   const PWR_RDY powerReady(int1);
   if (powerReady) {
     ESP_LOGD(TAG, "Power Ready");
-    ESP_LOGW(TAG,
-              "Looks like we had undervoltage. Recovering configuration.");
+    ESP_LOGW(TAG, "Looks like we had undervoltage. Recovering configuration.");
     recoverConfiguration();
     return;
   }
