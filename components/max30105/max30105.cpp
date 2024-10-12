@@ -11,7 +11,6 @@ namespace esphome {
 
 namespace max30105 {
 
-static const char *const TAG = "max44009.sensor";
 
 MAX30105Sensor::MAX30105Sensor() {
   FIFO_ROLLOVER_EN rolloveEnabled(_fifoConfiguration);
@@ -82,25 +81,6 @@ void MAX30105Sensor::recoverConfiguration() {
   softReset([fifoConfiguration = _fifoConfiguration,
              modeConfiguration = _modeConfiguration,
              sp02Configuration = _sp02Configuration, this] {
-
-    auto writeConfig = [&](auto& storage, const auto& value, const char* name) {
-      ESP_LOGD(TAG, "Writing FIFO Configuration: %02X",
-             static_cast<uint8_t>(value));
-      if (!this->write(value)) {
-        ESP_LOGE(TAG, "Can't write %s", name);
-        status_set_error();
-      }
-      if (!read(storage)) {
-        ESP_LOGE(TAG, "Can't read %s back", name);
-        if (storage != value) {
-          ESP_LOGW(TAG,
-                  "Read %s back is different. Expected: %02X, "
-                  "Actual: %02X", name,
-                  value, storage);
-        }
-      }
-    };
-
     writeConfig(_fifoConfiguration, fifoConfiguration, "Fifo Configuration");
     writeConfig(_modeConfiguration, modeConfiguration, "Mode Configuration");
     writeConfig(_sp02Configuration, sp02Configuration, "Sp02 Configuration");

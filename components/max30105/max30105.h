@@ -12,9 +12,10 @@
 namespace esphome {
 namespace max30105 {
 
+static const char *const TAG = "max44009.sensor";
 using namespace max30105_registers;
-class MAX30105Sensor : public PollingComponent,
-                       public i2c::I2CDevice {
+
+class MAX30105Sensor : public PollingComponent, public i2c::I2CDevice {
 
 public:
   MAX30105Sensor();
@@ -25,9 +26,15 @@ public:
 
   bool softReset(std::function<void()> doAfterReset);
 
-  void set_red_sensor(sensor::Sensor *red_sensor) { red_sensor_.sensor = red_sensor; }
-  void set_green_sensor(sensor::Sensor *green_sensor) { green_sensor_.sensor = green_sensor; }
-  void set_ir_sensor(sensor::Sensor *ir_sensor) { ir_sensor_.sensor = ir_sensor; }
+  void set_red_sensor(sensor::Sensor *red_sensor) {
+    red_sensor_.sensor = red_sensor;
+  }
+  void set_green_sensor(sensor::Sensor *green_sensor) {
+    green_sensor_.sensor = green_sensor;
+  }
+  void set_ir_sensor(sensor::Sensor *ir_sensor) {
+    ir_sensor_.sensor = ir_sensor;
+  }
 
   void dump_config() override;
 
@@ -35,19 +42,36 @@ protected:
   void recoverConfiguration();
 
   template <typename T> bool read(T &reg) {
-    return i2c::I2CDevice::read_byte(T::REG_ADR, &static_cast<uint8_t&>(reg));
+    return i2c::I2CDevice::read_byte(T::REG_ADR, &static_cast<uint8_t &>(reg));
   }
   template <typename T> bool write(const T &reg) {
     return i2c::I2CDevice::write_byte(T::REG_ADR, reg);
+  }
+
+  template <typename T>
+  void writeConfig(T &storage, const T &value, const char *name) {
+    ESP_LOGD(TAG, "Writing FIFO Configuration: %02X",
+             static_cast<uint8_t>(value));
+    if (!this->write(value)) {
+      ESP_LOGE(TAG, "Can't write %s", name);
+      this->status_set_error();
+    }
+    if (!this->read(storage)) {
+      ESP_LOGE(TAG, "Can't read %s back", name);
+      if (storage != value) {
+        ESP_LOGW(TAG,
+                 "Read %s back is different. Expected: %02X, "
+                 "Actual: %02X",
+                 name, value, storage);
+      }
+    }
   }
 
   // Config
   uint16_t _pointLimit = 32;
 
   // State
-  enum State  {
-    Ready, Reseting, Sampling, Off
-  };
+  enum State { Ready, Reseting, Sampling, Off };
   State _state = State::Off;
   bool _needReset = false;
   std::function<void()> _doAfterReset;
@@ -72,7 +96,7 @@ protected:
   Data ir_;
 
   struct SensorData {
-    sensor::Sensor* sensor{nullptr};
+    sensor::Sensor *sensor{nullptr};
     counter_type sent_counter = 0;
   };
 
