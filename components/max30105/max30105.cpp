@@ -13,7 +13,8 @@ MAX30105Sensor::MAX30105Sensor() {
   rolloveEnabled = true;
 
   MODE fifoMode(_modeConfiguration);
-  fifoMode = MODE::MultiLed;
+  //fifoMode = MODE::MultiLed;
+  fifoMode = MODE::ParticleSensing1LED;
 
   ADC_RGE adcRange(_sp02Configuration);
   adcRange = 4096;
