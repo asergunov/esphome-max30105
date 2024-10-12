@@ -16,6 +16,11 @@
   
     // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
     // "remoteUser": "root"
+
+    "mounts": [
+      "type=bind,source=/dev/bus/usb,target=/dev/bus/usb", 
+      //"type=bind,source=/dev/ttyACMP0,target=/dev/ttyACMP0"
+    ]
   
     // add vscode extensions
     "extensions": [

@@ -45,8 +45,8 @@ void MAX30105Sensor::setup() {
     return;
   }
 
-  softReset();
-  _doAfterReset = [this] {
+  softReset([this] {
+    ESP_LOGD(TAG, "Soft reset is done. Configuring.");
     if (!this->write(_fifoConfiguration)) {
       ESP_LOGE(TAG, "Can't write Fifo Configuration");
       status_set_error();
@@ -59,8 +59,33 @@ void MAX30105Sensor::setup() {
       ESP_LOGE(TAG, "Can't write SPo2 Configuration");
       status_set_error();
     }
+
+    FIFO_RD_PTR::REG rdReg;
+    FIFO_RD_PTR(rdReg) rdPtr;
+    rdPtr = 0;
+    if (!this->write(rdReg)) {
+      ESP_LOGE(TAG, "Can't write FIFO Read Pointer");
+      status_set_error();
+    }
+
+
+    FIFO_WR_PTR::REG wrReg;
+    FIFO_WR_PTR(wrReg) wrPtr;
+    wrPtr = 0;
+    if (!this->write(wrReg)) {
+      ESP_LOGE(TAG, "Can't write FIFO Write Pointer");
+      status_set_error();
+    }
+    
+    OVF_COUNTER::REG ovReg;
+    OVF_COUNTER(ovReg) ovPtr;
+    ovPtr = 0;
+    if (!this->write(ovReg)) {
+      ESP_LOGE(TAG, "Can't write Overflow Counter");
+      status_set_error();
+    }
   };
-}
+});
 
 void MAX30105Sensor::update() {
   auto publish_state = [](SensorData& sensor, Data& data) {
@@ -73,7 +98,7 @@ void MAX30105Sensor::update() {
   publish_state(ir_sensor_, ir_);
 }
 
-bool MAX30105Sensor::softReset() {
+bool MAX30105Sensor::softReset(std::function<void()> doAfterReset) {
   if (_resetInProgress) {
     ESP_LOGW(TAG, "Reset in progress");
     return false;
@@ -85,6 +110,7 @@ bool MAX30105Sensor::softReset() {
     status_set_error();
     return false;
   }
+  _doAfterReset = doAfterReset;
   _resetInProgress = true;
   return true;
 }

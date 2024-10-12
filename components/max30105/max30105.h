@@ -23,7 +23,7 @@ public:
   void update() override;
   void loop() override;
 
-  bool softReset();
+  bool softReset(std::function<void()> doAfterReset);
 
   void set_red_sensor(sensor::Sensor *red_sensor) { red_sensor_.sensor = red_sensor; }
   void set_green_sensor(sensor::Sensor *green_sensor) { green_sensor_.sensor = green_sensor; }
