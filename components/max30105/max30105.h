@@ -13,8 +13,7 @@ namespace esphome {
 namespace max30105 {
 
 using namespace max30105_registers;
-class MAX30105Sensor : public sensor::Sensor,
-                       public PollingComponent,
+class MAX30105Sensor : public PollingComponent,
                        public i2c::I2CDevice {
 
 public:
@@ -26,9 +25,9 @@ public:
 
   bool softReset();
 
-  void set_red_sensor(sensor::Sensor *red_sensor) { red_sensor_ = red_sensor; }
-  void set_green_sensor(sensor::Sensor *green_sensor) { green_sensor_ = green_sensor; }
-  void set_ir_sensor(sensor::Sensor *ir_sensor) { ir_sensor_ = ir_sensor; }
+  void set_red_sensor(sensor::Sensor *red_sensor) { red_sensor_.sensor = red_sensor; }
+  void set_green_sensor(sensor::Sensor *green_sensor) { green_sensor_.sensor = green_sensor; }
+  void set_ir_sensor(sensor::Sensor *ir_sensor) { ir_sensor_.sensor = ir_sensor; }
 
 protected:
   template <typename T> bool read(T &reg) {
@@ -54,14 +53,24 @@ protected:
   FIFOConfiguration _fifoConfiguration;
   SpO2Configuration _sp02Configuration;
 
+  using counter_type = uint32_t;
   // Buffers
-  std::deque<uint32_t> _red;
-  std::deque<uint32_t> _green;
-  std::deque<uint32_t> _ir;
+  struct Data {
+    std::deque<uint32_t> buffer;
+    counter_type counter = 0;
+  };
+  Data red_;
+  Data green_;
+  Data ir_;
 
-  sensor::Sensor *red_sensor_{nullptr};
-  sensor::Sensor *green_sensor_{nullptr};
-  sensor::Sensor *ir_sensor_{nullptr};
+  struct SensorData {
+    sensor::Sensor* sensor{nullptr};
+    counter_type sent_counter = -1;
+  };
+
+  SensorData red_sensor_;
+  SensorData green_sensor_;
+  SensorData ir_sensor_;
 };
 
 } // namespace max30105

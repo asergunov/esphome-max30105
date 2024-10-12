@@ -402,7 +402,8 @@ struct SR : Field<SpO2Configuration, 4, 2> {
   SR(Field::REG &reg) : Field(reg) {}
   SR &operator=(uint16_t sampleRate) {
     const auto SamplesPerSecond = SR::SamplesPerSecond;
-    Field::operator=(details::nextGratherOrEqualIndex(SamplesPerSecond, sampleRate));
+    Field::operator=(
+        details::nextGratherOrEqualIndex(SamplesPerSecond, sampleRate));
     return *this;
   }
 };
@@ -434,7 +435,8 @@ struct LED_PW : Field<SpO2Configuration, 1, 0> {
 
   LED_PW &operator=(uint16_t pulseWidth) {
     const auto PulseWidthInt = LED_PW::PulseWidthInt;
-    Field::operator=(details::nextGratherOrEqualIndex(PulseWidthInt, pulseWidth));
+    Field::operator=(
+        details::nextGratherOrEqualIndex(PulseWidthInt, pulseWidth));
     return *this;
   }
 };

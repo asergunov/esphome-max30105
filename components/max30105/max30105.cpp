@@ -13,14 +13,7 @@ namespace max30105 {
 
 static const char *const TAG = "max44009.sensor";
 
-template<typename Field> void setField(typename Field::REG& reg, uint8_t value)
-{
-  Field field(reg);
-  field = value;
-}
-
 MAX30105Sensor::MAX30105Sensor() {
-  setField<SMP_AVE>(_fifoConfiguration, 4);
   FIFO_ROLLOVER_EN rolloveEnabled(_fifoConfiguration);
   MODE fifoMode(_modeConfiguration);
   ADC_RGE adcRange(_sp02Configuration);
@@ -70,7 +63,14 @@ void MAX30105Sensor::setup() {
 }
 
 void MAX30105Sensor::update() {
-
+  auto publish_state = [](SensorData& sensor, Data& data) {
+    if(sensor.sensor && sensor.sent_counter != data.counter) {
+      sensor.sensor->publish_state(data.buffer.back());
+    }
+  };
+  publish_state(red_sensor_, red_);
+  publish_state(green_sensor_, green_);
+  publish_state(ir_sensor_, ir_);
 }
 
 bool MAX30105Sensor::softReset() {
@@ -137,20 +137,23 @@ void MAX30105Sensor::loop() {
   }
 
   auto *p = buffer;
-  auto decode_to = [&](std::deque<uint32_t> container) {
+  auto decode_to = [&](Data& data) {
+    auto container = data.buffer;
     uint32_t result = 0;
     for (uint8_t i = 0; i < 3; ++i)
       result = (result << 8) + *(p++);
     container.push_back(result);
+    ++data.counter;
     while (container.size() > _pointLimit)
       container.pop_front();
   };
+
   for (uint8_t i = 0; i < samplesToRead; ++i) {
-    decode_to(_red);
+    decode_to(red_);
     if (numLeds > 1)
-      decode_to(_green);
+      decode_to(green_);
     if (numLeds > 2)
-      decode_to(_ir);
+      decode_to(ir_);
   }
 }
 
