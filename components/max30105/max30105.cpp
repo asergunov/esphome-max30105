@@ -11,7 +11,7 @@ namespace max30105 {
 MAX30105Sensor::MAX30105Sensor() {
   FIFO_ROLLOVER_EN rolloveEnabled(_fifoConfiguration);
   rolloveEnabled = true;
-  
+
   SMP_AVE sampleAveraging(_fifoConfiguration);
   sampleAveraging = 4;
 
@@ -69,6 +69,10 @@ void MAX30105Sensor::dump_config() {
                 static_cast<uint8_t>(_led3PulseAmplitude));
   ESP_LOGCONFIG(TAG, "  Pilot Pulse Amplitude: %02X",
                 static_cast<uint8_t>(_pilotPulseAmplitude));
+  ESP_LOGCONFIG(TAG, "  Multi Led Mode 1: %02X",
+                static_cast<uint8_t>(_multiLedMode1));
+  ESP_LOGCONFIG(TAG, "  Multi Led Mode 1: %02X",
+                static_cast<uint8_t>(_multiLedMode2));
   ESP_LOGCONFIG(TAG, "  State: %s", [&] {
     switch (_state) {
     case Ready:
@@ -119,16 +123,21 @@ void MAX30105Sensor::recoverConfiguration() {
              led1PulseAmplitude = _led1PulseAmplitude,
              led2PulseAmplitude = _led2PulseAmplitude,
              led3PulseAmplitude = _led3PulseAmplitude,
-             pilotPulseAmplitude = _pilotPulseAmplitude, this] {
+             pilotPulseAmplitude = _pilotPulseAmplitude,
+             multiLedMode1 = _multiLedMode1, multiLedMode2 = _multiLedMode2,
+             this] {
     writeConfig(_fifoConfiguration, fifoConfiguration, "Fifo Configuration");
     writeConfig(_modeConfiguration, modeConfiguration, "Mode Configuration");
     writeConfig(_sp02Configuration, sp02Configuration, "Sp02 Configuration");
-    
+
     writeConfig(_led1PulseAmplitude, led1PulseAmplitude, "Fifo Configuration");
     writeConfig(_led2PulseAmplitude, led2PulseAmplitude, "Mode Configuration");
     writeConfig(_led3PulseAmplitude, led3PulseAmplitude, "Sp02 Configuration");
-    writeConfig(_pilotPulseAmplitude, pilotPulseAmplitude, "Sp02 Configuration");
+    writeConfig(_pilotPulseAmplitude, pilotPulseAmplitude,
+                "Sp02 Configuration");
 
+    writeConfig(_multiLedMode1, multiLedMode1, "MultiLedMode1");
+    writeConfig(_multiLedMode2, multiLedMode2, "MultiLedMode2");
 
     ESP_LOGD(TAG, "Resetting Read Pointer");
     FIFO_RD_PTR::REG rdReg;
