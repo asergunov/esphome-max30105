@@ -474,6 +474,25 @@ using LED3_PA = PARegister<0x0e>;
  */
 using PILOT_PA = PARegister<0x10>;
 
+enum class Slot : uint8_t {
+  Disabled,
+  Led1, ///< Red, LED1_PA
+  Led2, ///< IR, LED2_PA
+  Led3, ///< Green, LED3_PA
+  None,
+  Led1Pilot, ///< Red, PILOT_PA
+  Led2Pilot, ///< IR, PILOT_PA
+  Led3Pilot, ///< Green, PILOT_PA
+
+  LedRed = Led1,
+  LedIR = Led2,
+  LedGreen = Led3,
+
+  LedRedPilot = Led1Pilot,
+  LedIRPilot = Led2Pilot,
+  LedGreenPilot = Led3Pilot,
+};
+
 /**
  * In multi-LED mode, each sample is split into up to four time slots, SLOT1
  * through SLOT4. These control registers determine which LED is active in each
@@ -482,32 +501,14 @@ using PILOT_PA = PARegister<0x10>;
  */
 
 template <typename _REG, uint8_t _LAST_BIT, uint8_t _FIRST_BIT>
-struct Slot : Field<_REG, _LAST_BIT, _FIRST_BIT> {
-  enum Led : uint8_t {
-    Disabled,
-    Led1, ///< Red, LED1_PA
-    Led2, ///< IR, LED2_PA
-    Led3, ///< Green, LED3_PA
-    None,
-    Led1Pilot, ///< Red, PILOT_PA
-    Led2Pilot, ///< IR, PILOT_PA
-    Led3Pilot, ///< Green, PILOT_PA
-
-    LedRed = Led1,
-    LedIR = Led2,
-    LedGreen = Led3,
-
-    LedRedPilot = Led1Pilot,
-    LedIRPilot = Led2Pilot,
-    LedGreenPilot = Led3Pilot,
-  };
-  Slot(typename Field<_REG, _LAST_BIT, _FIRST_BIT>::REG &reg)
+struct SlotField : Field<_REG, _LAST_BIT, _FIRST_BIT> {
+  SlotField(typename Field<_REG, _LAST_BIT, _FIRST_BIT>::REG &reg)
       : Field<_REG, _LAST_BIT, _FIRST_BIT>(reg) {}
-  Slot &operator=(Led value) {
+  SlotField &operator=(Slot value) {
     Field<_REG, _LAST_BIT, _FIRST_BIT>::operator=(static_cast<uint8_t>(value));
     return *this;
   }
-  operator Led() const { return static_cast<Led>(static_cast<uint8_t>(*this)); }
+  operator Slot() const { return static_cast<Slot>(static_cast<uint8_t>(*this)); }
 };
 
 using MultiLedMode1 = Register<0x11>;
