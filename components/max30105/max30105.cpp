@@ -8,7 +8,6 @@ namespace esphome {
 
 namespace max30105 {
 
-
 MAX30105Sensor::MAX30105Sensor() {
   FIFO_ROLLOVER_EN rolloveEnabled(_fifoConfiguration);
   rolloveEnabled = true;
@@ -44,6 +43,20 @@ void MAX30105Sensor::dump_config() {
                 static_cast<uint8_t>(_fifoConfiguration));
   ESP_LOGCONFIG(TAG, "SP02Configuration: %02X",
                 static_cast<uint8_t>(_sp02Configuration));
+  ESP_LOGCONFIG(TAG, "State: %s", [&] {
+    switch (_state) {
+    case Ready:
+      return "Ready";
+    case Reseting:
+      return "Reseting";
+    case Sampling:
+      return "Sampling";
+    case Off:
+      return "Off";
+    }
+  }());
+  ESP_LOGCONFIG(TAG, "Reset Requested: %01X", _needReset);
+
   LOG_SENSOR("  ", "Red", this->red_sensor_.sensor);
   LOG_SENSOR("  ", "Green", this->green_sensor_.sensor);
   LOG_SENSOR("  ", "Infrared", this->ir_sensor_.sensor);
@@ -167,27 +180,28 @@ void MAX30105Sensor::loop() {
   if (powerReady) {
     ESP_LOGD(TAG, "Power Ready");
     _state = Ready;
-    if(_state != Off) {
-      ESP_LOGW(TAG, "Looks like we had undervoltage. Recovering configuration.");
+    if (_state != Off) {
+      ESP_LOGW(TAG,
+               "Looks like we had undervoltage. Recovering configuration.");
       recoverConfiguration();
       return;
     }
   }
-  
+
   const A_FULL almostFull(int1);
   const DATA_RDY dataReady(int1);
   const ALC_OVF ambientLightCancellationOverflow(int1);
   const PROX_INT proximityThreshold(int1);
-  if(almostFull) {
+  if (almostFull) {
     ESP_LOGD(TAG, "Almost Full");
   }
-  if(dataReady) {
+  if (dataReady) {
     ESP_LOGD(TAG, "Almost Full");
   }
-  if(ambientLightCancellationOverflow) {
+  if (ambientLightCancellationOverflow) {
     ESP_LOGD(TAG, "Ambient Light Cancellation Overflow");
   }
-  if(proximityThreshold) {
+  if (proximityThreshold) {
     ESP_LOGD(TAG, "Proximity Threshold");
   }
 
@@ -212,11 +226,11 @@ void MAX30105Sensor::loop() {
   }
 
   const DIE_TEMP_RDY dieTemperatureReady(int2);
-  if(dieTemperatureReady){
+  if (dieTemperatureReady) {
     ESP_LOGD(TAG, "Die Temperature Ready");
   }
 
-  if(dataReady) {
+  if (dataReady) {
     FIFO_RD_PTR::REG rdReg;
     FIFO_WR_PTR::REG wrReg;
     if (!this->read(rdReg)) {
@@ -230,7 +244,8 @@ void MAX30105Sensor::loop() {
       return;
     }
 
-    const uint8_t samplesToRead = (FIFO_WR_PTR(wrReg) - FIFO_RD_PTR(rdReg)) % 32;
+    const uint8_t samplesToRead =
+        (FIFO_WR_PTR(wrReg) - FIFO_RD_PTR(rdReg)) % 32;
     if (samplesToRead == 0) {
       // nothing to read
       return;
