@@ -501,9 +501,13 @@ struct Slot : Field<_REG, _LAST_BIT, _FIRST_BIT> {
     LedIRPilot=Led2Pilot,
     LedGreenPilot=Led3Pilot,
   };
+  Slot(Slot::REG& reg) : ield<_REG, _LAST_BIT, _FIRST_BIT>(reg) {}
   Slot& operator=(Led value) {
     Field<_REG, _LAST_BIT, _FIRST_BIT>::operator=(static_cast<uint8_t>(value));
     return *this;
+  }
+  operator Led() const {
+    return static_cast<Led>(static_cast<uint8_t>(*this));
   }
 };
 
