@@ -32,6 +32,8 @@ public:
   void dump_config() override;
 
 protected:
+  void recoverConfiguration();
+
   template <typename T> bool read(T &reg) {
     return i2c::I2CDevice::read_byte(T::REG_ADR, &static_cast<uint8_t&>(reg));
   }
@@ -43,7 +45,11 @@ protected:
   uint16_t _pointLimit = 32;
 
   // State
-  bool _resetInProgress = false;
+  enum State  {
+    Ready, Reseting, Sampling, Off
+  };
+  State _state = State::Off;
+  bool _needReset = false;
   std::function<void()> _doAfterReset;
 
   // Registers value we like to have saved
