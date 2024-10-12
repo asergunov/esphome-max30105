@@ -89,6 +89,8 @@ protected:
   LED2_PA _led2PulseAmplitude;
   LED3_PA _led3PulseAmplitude;
   PILOT_PA _pilotPulseAmplitude;
+  MultiLedMode1 _multiLedMode1;
+  MultiLedMode2 _multiLedMode2;
 
   using counter_type = uint32_t;
   // Buffers

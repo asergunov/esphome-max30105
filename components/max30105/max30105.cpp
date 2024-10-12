@@ -11,10 +11,13 @@ namespace max30105 {
 MAX30105Sensor::MAX30105Sensor() {
   FIFO_ROLLOVER_EN rolloveEnabled(_fifoConfiguration);
   rolloveEnabled = true;
+  
+  SMP_AVE sampleAveraging(_fifoConfiguration);
+  sampleAveraging = 4;
 
   MODE fifoMode(_modeConfiguration);
-  //fifoMode = MODE::MultiLed;
-  fifoMode = MODE::ParticleSensing1LED;
+  fifoMode = MODE::MultiLed;
+  // fifoMode = MODE::ParticleSensing1LED;
 
   ADC_RGE adcRange(_sp02Configuration);
   adcRange = 4096;
@@ -25,10 +28,19 @@ MAX30105Sensor::MAX30105Sensor() {
   LED_PW ledPulseWidth(_sp02Configuration);
   ledPulseWidth = 411;
 
-  _led1PulseAmplitude = 0x0f;
-  _led2PulseAmplitude = 0x0f;
-  _led3PulseAmplitude = 0x0f;
-  _pilotPulseAmplitude = 0x0f;
+  _led1PulseAmplitude = 0x1f;
+  _led2PulseAmplitude = 0x1f;
+  _led3PulseAmplitude = 0x1f;
+  _pilotPulseAmplitude = 0x1f;
+
+  SLOT1 slot1(_multiLedMode1);
+  SLOT2 slot2(_multiLedMode1);
+  SLOT3 slot3(_multiLedMode2);
+  SLOT4 slot4(_multiLedMode2);
+
+  slot1 = Slot::LedRed;
+  slot2 = Slot::LedGreen;
+  slot3 = Slot::LedIR;
 }
 
 void MAX30105Sensor::dump_config() {

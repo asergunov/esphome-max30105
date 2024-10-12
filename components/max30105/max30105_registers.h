@@ -441,13 +441,17 @@ struct LED_PW : Field<SpO2Configuration, 1, 0> {
   }
 };
 
-template <uint8_t _REG>
-struct PARegister : Register<_REG> { 
-  
+template <uint8_t _REG> struct PARegister : Register<_REG> {
+
   /**
-                                      * @brief TYPICAL LED CURRENT (mA)*
-                                      *
-                                      */
+   * @brief TYPICAL LED CURRENT (mA)*
+   *
+   * Default is 0x1F which gets us 6.4mA
+   * powerLevel = 0x02, 0.4mA - Presence detection of ~4 inch
+   * powerLevel = 0x1F, 6.4mA - Presence detection of ~8 inch
+   * powerLevel = 0x7F, 25.4mA - Presence detection of ~8 inch
+   * powerLevel = 0xFF, 50.0mA - Presence detection of ~12 inch
+   */
 
   static constexpr float typicalLedCurrent(uint8_t value) {
     return 50.f * 0xff / value;
@@ -478,25 +482,37 @@ using PILOT_PA = PARegister<0x10>;
  */
 
 template <typename _REG, uint8_t _LAST_BIT, uint8_t _FIRST_BIT>
-struct SlotField : Field<_REG, _LAST_BIT, _FIRST_BIT> {
-  enum Values : uint8_t {
+struct Slot : Field<_REG, _LAST_BIT, _FIRST_BIT> {
+  enum Led : uint8_t {
     Disabled,
     Led1, ///< Red, LED1_PA
     Led2, ///< IR, LED2_PA
     Led3, ///< Green, LED3_PA
     None,
-    Led1Plot, ///< Red, PLOT_PA
-    Led2Plot, ///< IR, PLOT_PA
-    Led3Plot, ///< Green, PLOT_PA
+    Led1Pilot, ///< Red, PILOT_PA
+    Led2Pilot, ///< IR, PILOT_PA
+    Led3Pilot, ///< Green, PILOT_PA
+    
+    LedRed =Led1,
+    LedIR=Led2,
+    LedGreen=Led3,
+
+    LedRedPilot=Led1Pilot,
+    LedIRPilot=Led2Pilot,
+    LedGreenPilot=Led3Pilot,
   };
+  Slot& operator=(Led value) {
+    Field<_REG, _LAST_BIT, _FIRST_BIT>::operator=(static_cast<uint8_t>(value));
+    return *this;
+  }
 };
 
 using MultiLedMode1 = Register<0x11>;
-using SLOT2 = SlotField<MultiLedMode1, 6, 4>;
-using SLOT1 = SlotField<MultiLedMode1, 2, 0>;
+using SLOT2 = Slot<MultiLedMode1, 6, 4>;
+using SLOT1 = Slot<MultiLedMode1, 2, 0>;
 using MultiLedMode2 = Register<0x12>;
-using SLOT4 = SlotField<MultiLedMode2, 6, 4>;
-using SLOT3 = SlotField<MultiLedMode2, 2, 0>;
+using SLOT4 = Slot<MultiLedMode2, 6, 4>;
+using SLOT3 = Slot<MultiLedMode2, 2, 0>;
 
 /**
  * @brief Temperature Integer
