@@ -54,6 +54,7 @@ void MAX30105Sensor::dump_config() {
     case Off:
       return "Off";
     }
+    return "Unknown";
   }());
   ESP_LOGCONFIG(TAG, "Reset Requested: %01X", _needReset);
 
