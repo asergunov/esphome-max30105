@@ -65,7 +65,7 @@ protected:
 
   struct SensorData {
     sensor::Sensor* sensor{nullptr};
-    counter_type sent_counter = -1;
+    counter_type sent_counter = 0;
   };
 
   SensorData red_sensor_;

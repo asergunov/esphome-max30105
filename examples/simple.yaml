@@ -13,8 +13,8 @@ external_components:
 logger:
 
 i2c:
-  scl: 1
-  sda: 2
+  scl: 7
+  sda: 6
 
 sensor:
   - platform: max30105
