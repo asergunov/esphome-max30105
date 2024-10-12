@@ -15,15 +15,18 @@ static const char *const TAG = "max44009.sensor";
 
 MAX30105Sensor::MAX30105Sensor() {
   FIFO_ROLLOVER_EN rolloveEnabled(_fifoConfiguration);
-  MODE fifoMode(_modeConfiguration);
-  ADC_RGE adcRange(_sp02Configuration);
-  SR sampleRate(_sp02Configuration);
-  LED_PW ledPulseWidth(_sp02Configuration);
-
   rolloveEnabled = true;
+
+  MODE fifoMode(_modeConfiguration);
   fifoMode = MODE::MultiLed;
+  
+  ADC_RGE adcRange(_sp02Configuration);
   adcRange = 4096;
+  
+  SR sampleRate(_sp02Configuration);
   sampleRate = 400;
+  
+  LED_PW ledPulseWidth(_sp02Configuration);
   ledPulseWidth = 411;
 }
 
@@ -144,16 +147,19 @@ bool MAX30105Sensor::softReset(std::function<void()> doAfterReset) {
 
 void MAX30105Sensor::loop() {
   if (_resetInProgress) {
-    if (!read(_modeConfiguration)) {
+    ModeConfiguration newMode;
+    if (!read(newMode)) {
       ESP_LOGE(TAG, "Can't get FIFO_RD_PTR");
       status_set_error();
       return;
     }
-    if (RESET(_modeConfiguration)) {
+    if (RESET(newMode)) {
       ESP_LOGD(TAG, "Waiting for reset complete");
       return;
     }
     _resetInProgress = false;
+    auto reset = RESET(_modeConfiguration);
+    reset = false;
     ESP_LOGD(TAG, "Reset is done");
     if (_doAfterReset) {
       ESP_LOGD(TAG, "Performing after reset actions");
