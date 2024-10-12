@@ -27,12 +27,33 @@ MAX30105Sensor::MAX30105Sensor() {
   ledPulseWidth = 411;
 }
 
+void MAX30105Sensor::dump_config()
+{
+  ESP_LOGCONFIG(TAG, "MAX30105:");
+  LOG_I2C_DEVICE(this);
+  if (this->is_failed()) {
+    ESP_LOGE(TAG, "Communication with MAX30105 failed!");
+  }
+  ESP_LOGCONFIG(TAG, "PartID: %02X", static_cast<uint8_t>(_partId));
+  ESP_LOGCONFIG(TAG, "RevisionId: %02X", static_cast<uint8_t>(_revisionId));
+  ESP_LOGCONFIG(TAG, "InterruptEnable1: %02X", static_cast<uint8_t>(_interruptEnab1e1));
+  ESP_LOGCONFIG(TAG, "InterruptEnable2: %02X", static_cast<uint8_t>(_interruptEnab1e2));
+  ESP_LOGCONFIG(TAG, "ModeConfiguration: %02X", static_cast<uint8_t>(_modeConfiguration));
+  ESP_LOGCONFIG(TAG, "FIFOConfiguration: %02X", static_cast<uint8_t>(_fifoConfiguration));
+  ESP_LOGCONFIG(TAG, "SP02Configuration: %02X", static_cast<uint8_t>(_sp02Configuration));
+  LOG_SENSOR("  ", "Red", this->red_sensor_.sensor);
+  LOG_SENSOR("  ", "Green", this->green_sensor_.sensor);
+  LOG_SENSOR("  ", "Infrared", this->ir_sensor_.sensor);
+  
+}
+
 void MAX30105Sensor::setup() {
   if (!this->read(_partId)) {
     ESP_LOGE(TAG, "Can't read PART_ID");
     status_set_error();
     return;
   }
+  ESP_LOGD(TAG, "Read ParID: %02X", static_cast<uint8_t>(_partId));
   if (_partId != PART_ID::POR_STATE) {
     ESP_LOGE(TAG, "PART_ID is not the one expected");
     status_set_error();
@@ -44,22 +65,26 @@ void MAX30105Sensor::setup() {
     status_set_error();
     return;
   }
+  ESP_LOGD(TAG, "Read RevisionID: %02X", static_cast<uint8_t>(_revisionId));
 
   softReset([this] {
-    ESP_LOGD(TAG, "Soft reset is done. Configuring.");
+    ESP_LOGD(TAG, "Writing FIFO Configuration: %02X", static_cast<uint8_t>(_fifoConfiguration));
     if (!this->write(_fifoConfiguration)) {
       ESP_LOGE(TAG, "Can't write Fifo Configuration");
       status_set_error();
     }
+    ESP_LOGD(TAG, "Writing Mode Configuration: %02X", static_cast<uint8_t>(_modeConfiguration));
     if (!this->write(_modeConfiguration)) {
       ESP_LOGE(TAG, "Can't write Mode Configuration");
       status_set_error();
     }
+    ESP_LOGD(TAG, "Writing SP02 Configuration: %02X", static_cast<uint8_t>(_sp02Configuration));
     if (!this->write(_sp02Configuration)) {
       ESP_LOGE(TAG, "Can't write SPo2 Configuration");
       status_set_error();
     }
 
+    ESP_LOGD(TAG, "Resetting Read Pointer");
     FIFO_RD_PTR::REG rdReg;
     auto rdPtr = FIFO_RD_PTR(rdReg);
     rdPtr = 0;
@@ -68,7 +93,7 @@ void MAX30105Sensor::setup() {
       status_set_error();
     }
 
-
+    ESP_LOGD(TAG, "Resetting Write Pointer");
     FIFO_WR_PTR::REG wrReg;
     auto wrPtr = FIFO_WR_PTR(wrReg);
     wrPtr = 0;
@@ -77,6 +102,7 @@ void MAX30105Sensor::setup() {
       status_set_error();
     }
     
+    ESP_LOGD(TAG, "Resetting Overflow Counter");
     OVF_COUNTER::REG ovReg;
     auto ovPtr = OVF_COUNTER(ovReg);
     ovPtr = 0;
@@ -103,6 +129,7 @@ bool MAX30105Sensor::softReset(std::function<void()> doAfterReset) {
     ESP_LOGW(TAG, "Reset in progress");
     return false;
   }
+  ESP_LOGD(TAG, "Starting Soft Reset");
   RESET reset(_modeConfiguration);
   reset = true;
   if (!write(_modeConfiguration)) {
@@ -123,10 +150,13 @@ void MAX30105Sensor::loop() {
       return;
     }
     if (RESET(_modeConfiguration)) {
+      ESP_LOGD(TAG, "Waiting for reset complete");
       return;
     }
     _resetInProgress = false;
+    ESP_LOGD(TAG, "Reset is done");
     if (_doAfterReset) {
+      ESP_LOGD(TAG, "Performing after reset actions");
       _doAfterReset();
       _doAfterReset = {};
     }

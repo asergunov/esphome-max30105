@@ -29,6 +29,8 @@ public:
   void set_green_sensor(sensor::Sensor *green_sensor) { green_sensor_.sensor = green_sensor; }
   void set_ir_sensor(sensor::Sensor *ir_sensor) { ir_sensor_.sensor = ir_sensor; }
 
+  void dump_config() override;
+
 protected:
   template <typename T> bool read(T &reg) {
     return i2c::I2CDevice::read_byte(T::REG_ADR, &static_cast<uint8_t&>(reg));
