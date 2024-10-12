@@ -61,7 +61,7 @@ void MAX30105Sensor::setup() {
     }
 
     FIFO_RD_PTR::REG rdReg;
-    FIFO_RD_PTR(rdReg) rdPtr;
+    auto rdPtr = FIFO_RD_PTR(rdReg);
     rdPtr = 0;
     if (!this->write(rdReg)) {
       ESP_LOGE(TAG, "Can't write FIFO Read Pointer");
@@ -70,7 +70,7 @@ void MAX30105Sensor::setup() {
 
 
     FIFO_WR_PTR::REG wrReg;
-    FIFO_WR_PTR(wrReg) wrPtr;
+    auto wrPtr = FIFO_WR_PTR(wrReg);
     wrPtr = 0;
     if (!this->write(wrReg)) {
       ESP_LOGE(TAG, "Can't write FIFO Write Pointer");
@@ -78,7 +78,7 @@ void MAX30105Sensor::setup() {
     }
     
     OVF_COUNTER::REG ovReg;
-    OVF_COUNTER(ovReg) ovPtr;
+    auto ovPtr = OVF_COUNTER(ovReg);
     ovPtr = 0;
     if (!this->write(ovReg)) {
       ESP_LOGE(TAG, "Can't write Overflow Counter");
