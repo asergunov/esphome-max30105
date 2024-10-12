@@ -31,19 +31,19 @@ void MAX30105Sensor::dump_config() {
   if (this->is_failed()) {
     ESP_LOGE(TAG, "Communication with MAX30105 failed!");
   }
-  ESP_LOGCONFIG(TAG, "PartID: %02X", static_cast<uint8_t>(_partId));
-  ESP_LOGCONFIG(TAG, "RevisionId: %02X", static_cast<uint8_t>(_revisionId));
-  ESP_LOGCONFIG(TAG, "InterruptEnable1: %02X",
+  ESP_LOGCONFIG(TAG, "  PartID: %02X", static_cast<uint8_t>(_partId));
+  ESP_LOGCONFIG(TAG, "  RevisionId: %02X", static_cast<uint8_t>(_revisionId));
+  ESP_LOGCONFIG(TAG, "  InterruptEnable1: %02X",
                 static_cast<uint8_t>(_interruptEnab1e1));
-  ESP_LOGCONFIG(TAG, "InterruptEnable2: %02X",
+  ESP_LOGCONFIG(TAG, "  InterruptEnable2: %02X",
                 static_cast<uint8_t>(_interruptEnab1e2));
-  ESP_LOGCONFIG(TAG, "ModeConfiguration: %02X",
+  ESP_LOGCONFIG(TAG, "  ModeConfiguration: %02X",
                 static_cast<uint8_t>(_modeConfiguration));
-  ESP_LOGCONFIG(TAG, "FIFOConfiguration: %02X",
+  ESP_LOGCONFIG(TAG, "  FIFOConfiguration: %02X",
                 static_cast<uint8_t>(_fifoConfiguration));
-  ESP_LOGCONFIG(TAG, "SP02Configuration: %02X",
+  ESP_LOGCONFIG(TAG, "  SP02Configuration: %02X",
                 static_cast<uint8_t>(_sp02Configuration));
-  ESP_LOGCONFIG(TAG, "State: %s", [&] {
+  ESP_LOGCONFIG(TAG, "  State: %s", [&] {
     switch (_state) {
     case Ready:
       return "Ready";
@@ -56,7 +56,7 @@ void MAX30105Sensor::dump_config() {
     }
     return "Unknown";
   }());
-  ESP_LOGCONFIG(TAG, "Reset Requested: %01X", _needReset);
+  ESP_LOGCONFIG(TAG, "  Reset Requested: %01X", _needReset);
 
   LOG_SENSOR("  ", "Red", this->red_sensor_.sensor);
   LOG_SENSOR("  ", "Green", this->green_sensor_.sensor);
