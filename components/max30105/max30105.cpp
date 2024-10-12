@@ -51,8 +51,6 @@ void MAX30105Sensor::dump_config() {
       return "Reseting";
     case Sampling:
       return "Sampling";
-    case Off:
-      return "Off";
     }
     return "Unknown";
   }());
@@ -88,7 +86,7 @@ void MAX30105Sensor::setup() {
 
 void MAX30105Sensor::recoverConfiguration() {
   _needReset = false;
-  _state = _state == Off ? Off : Ready;
+  _state = Ready;
   softReset([fifoConfiguration = _fifoConfiguration,
              modeConfiguration = _modeConfiguration,
              sp02Configuration = _sp02Configuration, this] {
@@ -180,13 +178,10 @@ void MAX30105Sensor::loop() {
   const PWR_RDY powerReady(int1);
   if (powerReady) {
     ESP_LOGD(TAG, "Power Ready");
-    _state = Ready;
-    if (_state != Off) {
-      ESP_LOGW(TAG,
-               "Looks like we had undervoltage. Recovering configuration.");
-      recoverConfiguration();
-      return;
-    }
+    ESP_LOGW(TAG,
+              "Looks like we had undervoltage. Recovering configuration.");
+    recoverConfiguration();
+    return;
   }
 
   const A_FULL almostFull(int1);
@@ -206,7 +201,7 @@ void MAX30105Sensor::loop() {
     ESP_LOGD(TAG, "Proximity Threshold");
   }
 
-  if (_needReset && _state != Off) {
+  if (_needReset) {
     RESET reset(_modeConfiguration);
     reset = true;
     if (!write(_modeConfiguration)) {

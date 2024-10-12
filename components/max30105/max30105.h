@@ -72,8 +72,8 @@ protected:
   uint16_t _pointLimit = 32;
 
   // State
-  enum State { Ready, Reseting, Sampling, Off };
-  State _state = State::Off;
+  enum State { Ready, Reseting, Sampling };
+  State _state = State::Ready;
   bool _needReset = false;
   std::function<void()> _doAfterReset;
 
