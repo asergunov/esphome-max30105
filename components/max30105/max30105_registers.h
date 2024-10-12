@@ -492,23 +492,22 @@ struct Slot : Field<_REG, _LAST_BIT, _FIRST_BIT> {
     Led1Pilot, ///< Red, PILOT_PA
     Led2Pilot, ///< IR, PILOT_PA
     Led3Pilot, ///< Green, PILOT_PA
-    
-    LedRed =Led1,
-    LedIR=Led2,
-    LedGreen=Led3,
 
-    LedRedPilot=Led1Pilot,
-    LedIRPilot=Led2Pilot,
-    LedGreenPilot=Led3Pilot,
+    LedRed = Led1,
+    LedIR = Led2,
+    LedGreen = Led3,
+
+    LedRedPilot = Led1Pilot,
+    LedIRPilot = Led2Pilot,
+    LedGreenPilot = Led3Pilot,
   };
-  Slot(Slot::REG& reg) : Field<_REG, _LAST_BIT, _FIRST_BIT>(reg) {}
-  Slot& operator=(Led value) {
+  Slot(typename Field<_REG, _LAST_BIT, _FIRST_BIT>::REG &reg)
+      : Field<_REG, _LAST_BIT, _FIRST_BIT>(reg) {}
+  Slot &operator=(Led value) {
     Field<_REG, _LAST_BIT, _FIRST_BIT>::operator=(static_cast<uint8_t>(value));
     return *this;
   }
-  operator Led() const {
-    return static_cast<Led>(static_cast<uint8_t>(*this));
-  }
+  operator Led() const { return static_cast<Led>(static_cast<uint8_t>(*this)); }
 };
 
 using MultiLedMode1 = Register<0x11>;
