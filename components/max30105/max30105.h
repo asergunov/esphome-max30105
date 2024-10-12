@@ -3,7 +3,8 @@
 #include "esphome/components/i2c/i2c.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/core/component.h"
-// #include "esphome/core/ring_buffer.h"
+#include "esp_log.h"
+#include "esphome/core/log.h"
 
 #include "max30105_registers.h"
 #include <cstdint>

@@ -1,8 +1,5 @@
 #include "max30105.h"
 
-#include "esp_log.h"
-
-#include "esphome/core/log.h"
 #include "max30105_registers.h"
 #include <cassert>
 #include <cstdint>
