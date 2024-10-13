@@ -114,7 +114,7 @@ void MAX30105Sensor::recoverConfiguration() {
 
 void MAX30105Sensor::update() {
   auto publish_state = [](SensorData &sensor, Data &data) {
-    if (sensor.sensor && sensor.sent_counter != data.counter) {
+    if (sensor.sensor && sensor.sent_counter != data.counter && !data.buffer.empty()) {
       sensor.sensor->publish_state(data.buffer.back());
     }
   };
