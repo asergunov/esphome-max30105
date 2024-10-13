@@ -224,11 +224,15 @@ void MAX30105Sensor::loop() {
     }
 
     const auto numLeds = _config.field<MODE>().numLeds();
-
     const uint16_t bytesToRead = samplesToRead * numLeds * 3;
+
+    ESP_LOGV(TAG, "Samples to read: %ui. Bytes to read: %ui", samplesToRead, bytesToRead);
+    
     uint8_t buffer[32 * 3 * 12];
     //   assert(bytesToRead < sizeof(buffer));
     if (!this->read_bytes(FIFO_DATA::REG_ADR, buffer, bytesToRead)) {
+      ESP_LOGE(TAG, "Can't read FIFO DATA");
+      status_set_error();
       return;
     }
 
@@ -240,6 +244,7 @@ void MAX30105Sensor::loop() {
         result = (result << 8) + *(p++);
       container.push_back(result);
       ++data.counter;
+      ESP_LOGV(TAG, "Decode value: %ui. Counter %ui", result, data.counter);
       while (container.size() > _pointLimit)
         container.pop_front();
     };
