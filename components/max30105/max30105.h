@@ -99,7 +99,7 @@ protected:
 
 
   FIFO_RD_PTR::REG rdReg;
-  FIFO_WR_PTR::REG wrReg
+  FIFO_WR_PTR::REG wrReg;
 
   struct SensorData {
     sensor::Sensor *sensor{nullptr};
