@@ -38,11 +38,12 @@ public:
   }
 
   void dump_config() override;
-
-protected:
   void recoverConfiguration();
 
+protected:
+
   template <typename T> bool read(T &reg) {
+    ESP_LOGV(TAG, "Reading ")
     return i2c::I2CDevice::read_byte(T::REG_ADR, &static_cast<uint8_t &>(reg));
   }
   template <typename T> bool write(const T &reg) {
