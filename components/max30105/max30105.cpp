@@ -75,7 +75,7 @@ void MAX30105Sensor::recoverConfiguration() {
   _needReset = false;
   _state = Ready;
   softReset([config = _config, this] {
-    for_each_in_tuple(config, [&](auto& reg){
+    for_each_in_tuple(config, [&](auto &reg) {
       using REG = std::decay_t<decltype(reg)>;
       using traits = RegTraits<REG>;
       const auto &value = config.reg<REG>();
@@ -90,27 +90,26 @@ void MAX30105Sensor::recoverConfiguration() {
                  "Actual: %02X",
                  traits::name, value, storage);
       }
-      }
+    });
+
+    ESP_LOGD(TAG, "Resetting Read Pointer");
+    FIFO_RD_PTR::REG rdReg;
+    rdReg << FIFO_RD_PTR(0);
+    if (!this->write(rdReg))
+      return;
+
+    ESP_LOGD(TAG, "Resetting Write Pointer");
+    FIFO_WR_PTR::REG wrReg;
+    wrReg << FIFO_WR_PTR(0);
+    if (!this->write(wrReg))
+      return;
+
+    ESP_LOGD(TAG, "Resetting Overflow Counter");
+    OVF_COUNTER::REG ovReg;
+    ovReg << OVF_COUNTER(0);
+    if (!this->write(ovReg))
+      return;
   });
-
-  ESP_LOGD(TAG, "Resetting Read Pointer");
-  FIFO_RD_PTR::REG rdReg;
-  rdReg << FIFO_RD_PTR(0);
-  if (!this->write(rdReg))
-    return;
-
-  ESP_LOGD(TAG, "Resetting Write Pointer");
-  FIFO_WR_PTR::REG wrReg;
-  wrReg << FIFO_WR_PTR(0);
-  if (!this->write(wrReg))
-    return;
-
-  ESP_LOGD(TAG, "Resetting Overflow Counter");
-  OVF_COUNTER::REG ovReg;
-  ovReg << OVF_COUNTER(0);
-  if (!this->write(ovReg))
-    return;
-});
 }
 
 void MAX30105Sensor::update() {
