@@ -206,9 +206,7 @@ void MAX30105Sensor::loop() {
     ESP_LOGD(TAG, "Die Temperature Ready");
   }
 
-  if (true || dataReady) {
-    FIFO_RD_PTR::REG rdReg;
-    FIFO_WR_PTR::REG wrReg;
+  if (true || dataReady) {;
     if (!this->read(rdReg)) {
       return;
     }

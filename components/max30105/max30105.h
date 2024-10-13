@@ -74,7 +74,7 @@ protected:
   }
 
   // Config
-  uint16_t _pointLimit = 32;
+  uint16_t _pointLimit = 8;
 
   // State
   enum State { Ready, Reseting, Sampling };
@@ -96,6 +96,10 @@ protected:
   Data red_;
   Data green_;
   Data ir_;
+
+
+  FIFO_RD_PTR::REG rdReg;
+  FIFO_WR_PTR::REG wrReg
 
   struct SensorData {
     sensor::Sensor *sensor{nullptr};
