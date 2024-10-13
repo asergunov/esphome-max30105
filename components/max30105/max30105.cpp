@@ -9,38 +9,12 @@ namespace esphome {
 namespace max30105 {
 
 MAX30105Sensor::MAX30105Sensor() {
-  FIFO_ROLLOVER_EN rolloveEnabled(_fifoConfiguration);
-  rolloveEnabled = true;
-
-  SMP_AVE sampleAveraging(_fifoConfiguration);
-  sampleAveraging = 4;
-
-  MODE fifoMode(_modeConfiguration);
-  fifoMode = MODE::MultiLed;
-  // fifoMode = MODE::ParticleSensing1LED;
-
-  ADC_RGE adcRange(_sp02Configuration);
-  adcRange = 4096;
-
-  SR sampleRate(_sp02Configuration);
-  sampleRate = 400;
-
-  LED_PW ledPulseWidth(_sp02Configuration);
-  ledPulseWidth = 411;
-
-  _led1PulseAmplitude = 0x1f;
-  _led2PulseAmplitude = 0x1f;
-  _led3PulseAmplitude = 0x1f;
-  _pilotPulseAmplitude = 0x1f;
-
-  SLOT1 slot1(_multiLedMode1);
-  SLOT2 slot2(_multiLedMode1);
-  SLOT3 slot3(_multiLedMode2);
-  SLOT4 slot4(_multiLedMode2);
-
-  slot1 = Slot::LedRed;
-  slot2 = Slot::LedGreen;
-  slot3 = Slot::LedIR;
+  _config << FIFO_ROLLOVER_EN(true) << SMP_AVE(4) << MODE(Mode::MultiLed)
+          << ADC_RGE::fromFulScale(4096) << SR(400)
+          << LED_PW::fromPulseWidth(uint16_t(411)) << LED1_PA(0x1f)
+          << LED2_PA(0x1f) << LED3_PA(0x1f) << PILOT_PA(0x1f)
+          << SLOT1(Slot::LedRed) << SLOT2(Slot::LedGreen) << SLOT3(Slot::LedIR)
+          << SLOT4(Slot::Disabled);
 }
 
 void MAX30105Sensor::dump_config() {
@@ -51,28 +25,11 @@ void MAX30105Sensor::dump_config() {
   }
   ESP_LOGCONFIG(TAG, "  PartID: %02X", static_cast<uint8_t>(_partId));
   ESP_LOGCONFIG(TAG, "  RevisionId: %02X", static_cast<uint8_t>(_revisionId));
-  ESP_LOGCONFIG(TAG, "  InterruptEnable1: %02X",
-                static_cast<uint8_t>(_interruptEnab1e1));
-  ESP_LOGCONFIG(TAG, "  InterruptEnable2: %02X",
-                static_cast<uint8_t>(_interruptEnab1e2));
-  ESP_LOGCONFIG(TAG, "  ModeConfiguration: %02X",
-                static_cast<uint8_t>(_modeConfiguration));
-  ESP_LOGCONFIG(TAG, "  FIFOConfiguration: %02X",
-                static_cast<uint8_t>(_fifoConfiguration));
-  ESP_LOGCONFIG(TAG, "  SP02Configuration: %02X",
-                static_cast<uint8_t>(_sp02Configuration));
-  ESP_LOGCONFIG(TAG, "  Led1 Pulse Amplitude: %02X",
-                static_cast<uint8_t>(_led1PulseAmplitude));
-  ESP_LOGCONFIG(TAG, "  Led2 Pulse Amplitude: %02X",
-                static_cast<uint8_t>(_led2PulseAmplitude));
-  ESP_LOGCONFIG(TAG, "  Led3 Pulse Amplitude: %02X",
-                static_cast<uint8_t>(_led3PulseAmplitude));
-  ESP_LOGCONFIG(TAG, "  Pilot Pulse Amplitude: %02X",
-                static_cast<uint8_t>(_pilotPulseAmplitude));
-  ESP_LOGCONFIG(TAG, "  Multi Led Mode 1: %02X",
-                static_cast<uint8_t>(_multiLedMode1));
-  ESP_LOGCONFIG(TAG, "  Multi Led Mode 1: %02X",
-                static_cast<uint8_t>(_multiLedMode2));
+  for_each_in_tuple(_config, [](const auto& reg){
+    using REG = std::decay_t<decltype(reg)>;
+    ESP_LOGCONFIG(TAG, "  %s(%02X): %02X", RegName<REG>::name, REG::REG_ADR,
+                    static_cast<uint8_t>(reg));
+  });
   ESP_LOGCONFIG(TAG, "  State: %s", [&] {
     switch (_state) {
     case Ready:
@@ -117,32 +74,31 @@ void MAX30105Sensor::setup() {
 void MAX30105Sensor::recoverConfiguration() {
   _needReset = false;
   _state = Ready;
-  softReset([fifoConfiguration = _fifoConfiguration,
-             modeConfiguration = _modeConfiguration,
-             sp02Configuration = _sp02Configuration,
-             led1PulseAmplitude = _led1PulseAmplitude,
-             led2PulseAmplitude = _led2PulseAmplitude,
-             led3PulseAmplitude = _led3PulseAmplitude,
-             pilotPulseAmplitude = _pilotPulseAmplitude,
-             multiLedMode1 = _multiLedMode1, multiLedMode2 = _multiLedMode2,
-             this] {
-    writeConfig(_fifoConfiguration, fifoConfiguration, "Fifo Configuration");
-    writeConfig(_modeConfiguration, modeConfiguration, "Mode Configuration");
-    writeConfig(_sp02Configuration, sp02Configuration, "Sp02 Configuration");
-
-    writeConfig(_led1PulseAmplitude, led1PulseAmplitude, "Fifo Configuration");
-    writeConfig(_led2PulseAmplitude, led2PulseAmplitude, "Mode Configuration");
-    writeConfig(_led3PulseAmplitude, led3PulseAmplitude, "Sp02 Configuration");
-    writeConfig(_pilotPulseAmplitude, pilotPulseAmplitude,
-                "Sp02 Configuration");
-
-    writeConfig(_multiLedMode1, multiLedMode1, "MultiLedMode1");
-    writeConfig(_multiLedMode2, multiLedMode2, "MultiLedMode2");
+  softReset([config = _config, this] {
+    for_each_in_tuple(config, [&](auto& reg){
+      using REG = std::decay_t<decltype(reg)>;
+      const auto& value = config.reg<REG>();
+      ESP_LOGD(TAG, "Writing FIFO Configuration: %02X",
+               static_cast<uint8_t>(value));
+      if (!write(value)) {
+        ESP_LOGE(TAG, "Can't write %s", RegName<REG>::name);
+        status_set_error();
+      }
+      auto &storage = _config.reg<REG>();
+      if (!read(storage)) {
+        ESP_LOGE(TAG, "Can't read %s back", RegName<REG>::name);
+        if (storage != value) {
+          ESP_LOGW(TAG,
+                   "Read %s back is different. Expected: %02X, "
+                   "Actual: %02X",
+                   RegName<REG>::name, value, storage);
+        }
+      }
+    });
 
     ESP_LOGD(TAG, "Resetting Read Pointer");
     FIFO_RD_PTR::REG rdReg;
-    auto rdPtr = FIFO_RD_PTR(rdReg);
-    rdPtr = 0;
+    rdReg << FIFO_RD_PTR(0);
     if (!this->write(rdReg)) {
       ESP_LOGE(TAG, "Can't write FIFO Read Pointer");
       status_set_error();
@@ -150,8 +106,7 @@ void MAX30105Sensor::recoverConfiguration() {
 
     ESP_LOGD(TAG, "Resetting Write Pointer");
     FIFO_WR_PTR::REG wrReg;
-    auto wrPtr = FIFO_WR_PTR(wrReg);
-    wrPtr = 0;
+    wrReg << FIFO_WR_PTR(0);
     if (!this->write(wrReg)) {
       ESP_LOGE(TAG, "Can't write FIFO Write Pointer");
       status_set_error();
@@ -159,8 +114,7 @@ void MAX30105Sensor::recoverConfiguration() {
 
     ESP_LOGD(TAG, "Resetting Overflow Counter");
     OVF_COUNTER::REG ovReg;
-    auto ovPtr = OVF_COUNTER(ovReg);
-    ovPtr = 0;
+    ovReg << OVF_COUNTER(0);
     if (!this->write(ovReg)) {
       ESP_LOGE(TAG, "Can't write Overflow Counter");
       status_set_error();
@@ -195,12 +149,12 @@ bool MAX30105Sensor::softReset(std::function<void()> doAfterReset) {
 
 void MAX30105Sensor::loop() {
   if (_state == Reseting) {
-    if (!read(_modeConfiguration)) {
+    if (!read(_config.reg<RESET::REG>())) {
       ESP_LOGE(TAG, "Can't get FIFO_RD_PTR");
       status_set_error();
       return;
     }
-    if (RESET(_modeConfiguration)) {
+    if (_config.field<RESET>()) {
       ESP_LOGD(TAG, "Waiting for reset complete");
       return;
     }
@@ -220,8 +174,7 @@ void MAX30105Sensor::loop() {
     return;
   }
 
-  const PWR_RDY powerReady(int1);
-  if (powerReady) {
+  if (PWR_RDY(int1)) {
     ESP_LOGD(TAG, "Power Ready");
     ESP_LOGW(TAG, "Looks like we had undervoltage. Recovering configuration.");
     recoverConfiguration();
@@ -246,9 +199,9 @@ void MAX30105Sensor::loop() {
   }
 
   if (_needReset) {
-    RESET reset(_modeConfiguration);
-    reset = true;
-    if (!write(_modeConfiguration)) {
+    auto& reg = _config.reg<RESET::REG>();
+    reg << RESET(true);
+    if (!write(reg)) {
       ESP_LOGE(TAG, "Cant write Mode Configuration");
       status_set_error();
       return;
@@ -291,7 +244,7 @@ void MAX30105Sensor::loop() {
       return;
     }
 
-    const auto numLeds = MODE(_modeConfiguration).numLeds();
+    const auto numLeds = _config.field<MODE>().numLeds();
 
     const uint16_t bytesToRead = samplesToRead * numLeds * 3;
     uint8_t buffer[32 * 3 * 12];

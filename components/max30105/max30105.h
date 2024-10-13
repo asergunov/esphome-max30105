@@ -1,9 +1,9 @@
 #pragma once
 
+#include "esp_log.h"
 #include "esphome/components/i2c/i2c.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/core/component.h"
-#include "esp_log.h"
 #include "esphome/core/log.h"
 
 #include "max30105_registers.h"
@@ -49,25 +49,6 @@ protected:
     return i2c::I2CDevice::write_byte(T::REG_ADR, reg);
   }
 
-  template <typename T>
-  void writeConfig(T &storage, const T &value, const char *name) {
-    ESP_LOGD(TAG, "Writing FIFO Configuration: %02X",
-             static_cast<uint8_t>(value));
-    if (!this->write(value)) {
-      ESP_LOGE(TAG, "Can't write %s", name);
-      this->status_set_error();
-    }
-    if (!this->read(storage)) {
-      ESP_LOGE(TAG, "Can't read %s back", name);
-      if (storage != value) {
-        ESP_LOGW(TAG,
-                 "Read %s back is different. Expected: %02X, "
-                 "Actual: %02X",
-                 name, value, storage);
-      }
-    }
-  }
-
   // Config
   uint16_t _pointLimit = 32;
 
@@ -80,17 +61,7 @@ protected:
   // Registers value we like to have saved
   PART_ID _partId;
   REV_ID _revisionId;
-  InterruptEnable1 _interruptEnab1e1;
-  InterruptEnable2 _interruptEnab1e2;
-  ModeConfiguration _modeConfiguration;
-  FIFOConfiguration _fifoConfiguration;
-  SpO2Configuration _sp02Configuration;
-  LED1_PA _led1PulseAmplitude;
-  LED2_PA _led2PulseAmplitude;
-  LED3_PA _led3PulseAmplitude;
-  PILOT_PA _pilotPulseAmplitude;
-  MultiLedMode1 _multiLedMode1;
-  MultiLedMode2 _multiLedMode2;
+  Configuration _config;
 
   using counter_type = uint32_t;
   // Buffers

@@ -58,6 +58,9 @@ CONFIG_SCHEMA = (
 
 
 async def to_code(config):
+    cg.add_build_flag("-std=c++17")
+    cg.add_build_flag("-std=gnu++17")
+    cg.add_platformio_option("build_unflags", ["-std=c++11", "-std=gnu++11"])
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)

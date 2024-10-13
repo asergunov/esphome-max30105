@@ -6,19 +6,42 @@
 #include <array>
 #include <cstddef>
 #include <stdint.h>
+#include <tuple>
 
 namespace max30105_registers {
 namespace details {
 template <typename T, size_t N>
-size_t nextGratherOrEqualIndex(const std::array<T, N> &list, const T &value) {
-  auto i = std::upper_bound(std::begin(list), std::end(list), value);
-  if (i != std::begin(list))
-    --i;
-  return std::distance(std::begin(list), i);
+constexpr size_t nextGreaterOrEqualIndex(const std::array<T, N> &list,
+                                         const T &value) {
+
+  return std::min(1, std::distance(std::begin(list),
+                                   std::upper_bound(std::begin(list),
+                                                    std::end(list), value))) -
+         1;
+}
+
+// Tuple visiting
+template <int... Is> struct seq {};
+
+template <int N, int... Is> struct gen_seq : gen_seq<N - 1, N - 1, Is...> {};
+
+template <int... Is> struct gen_seq<0, Is...> : seq<Is...> {};
+
+template <typename T, typename F, int... Is>
+void for_each(T &&t, F f, seq<Is...>) {
+  auto l = {(f(std::get<Is>(t)), 0)...};
 }
 } // namespace details
 
+template <typename... Ts, typename F>
+void for_each_in_tuple(std::tuple<Ts...> const &t, F f) {
+  details::for_each(t, f, details::gen_seq<sizeof...(Ts)>());
+}
+
 enum class Access { R, W, RW };
+
+template <typename _REG, uint8_t _LAST_BIT = 7, uint8_t _FIRST_BIT = 0>
+struct Field;
 
 template <uint8_t _REG_ADR, Access _ACCESS = Access::RW,
           uint8_t _POR_STATE = 0x00>
@@ -26,12 +49,35 @@ struct Register {
   static constexpr auto REG_ADR = _REG_ADR;
   static constexpr auto POR_STATE = _POR_STATE;
 
-  Register() : value(POR_STATE) {}
-  Register(uint8_t v) : value(v) {}
+  explicit constexpr Register(uint8_t val) : value(val) {}
+  constexpr Register() {}
 
-  uint8_t value = POR_STATE;
+  template <uint8_t _LAST_BIT, uint8_t _FIRST_BIT>
+  Register &operator<<(const Field<Register, _LAST_BIT, _FIRST_BIT> &field) {
+    using Field = Field<Register, _LAST_BIT, _FIRST_BIT>;
+    value = (value & ~Field::MASK) |
+            (Field::MASK & (static_cast<uint8_t>(field) << Field::BEGIN_BIT));
+    return *this;
+  }
+
+  template <uint8_t _LAST_BIT, uint8_t _FIRST_BIT>
+  const Register &
+  operator>>(Field<Register, _LAST_BIT, _FIRST_BIT> &field) const {
+    using Field = Field<Register, _LAST_BIT, _FIRST_BIT>;
+    field = Field((value >> Field::BEGIN_BIT) & Field::MASK);
+    return *this;
+  }
+
+  constexpr operator const uint8_t &() const { return value; }
   operator uint8_t &() { return value; }
-  operator const uint8_t &() const { return value; }
+
+  Register operator=(const uint8_t &raw) {
+    value = raw;
+    return *this;
+  }
+
+private:
+  uint8_t value = POR_STATE;
 };
 
 template <typename _REG, uint8_t _LAST_BIT, uint8_t _FIRST_BIT> struct Field {
@@ -39,19 +85,14 @@ template <typename _REG, uint8_t _LAST_BIT, uint8_t _FIRST_BIT> struct Field {
   static constexpr auto END_BIT = _LAST_BIT + 1;
   static constexpr auto MASK = ((1u << END_BIT) - 1u) << BEGIN_BIT;
   using REG = _REG;
-  REG &reg;
-  Field(REG &_reg) : reg(_reg) {}
 
-  operator uint8_t() const {
-    return (static_cast<uint8_t>(reg) & MASK) >> BEGIN_BIT;
-  }
+  Field() {}
+  constexpr Field(const uint8_t &value) : _value(value) {}
+  // constexpr Field(const REG &reg) : Field(static_cast<Field>(reg)) {}
+  constexpr operator const uint8_t &() const { return _value; }
 
-  Field &operator=(const uint8_t value) {
-    auto &reg_value = static_cast<uint8_t &>(reg);
-    reg_value &= ~MASK;
-    reg_value |= MASK & (value << BEGIN_BIT);
-    return *this;
-  }
+private:
+  uint8_t _value;
 };
 
 template <typename _REG, uint8_t _BIT> using Bit = Field<_REG, _BIT, _BIT>;
@@ -235,20 +276,18 @@ using FIFOConfiguration = Register<0x08>;
  * channel) can be averaged and decimated  on the chip by setting this register.
  *
  */
-struct SMP_AVE : public Field<FIFOConfiguration, 7, 5> {
-  SMP_AVE(FIFOConfiguration &reg) : Field(reg) {}
-  SMP_AVE &operator=(uint8_t avarege) {
-    const auto value = avarege >= 32   ? 0b101
-                       : avarege >= 16 ? 0b100
-                       : avarege >= 8  ? 0b011
-                       : avarege >= 4  ? 0b010
-                       : avarege > 2   ? 0x001
-                                       : 0x00;
-    Field::operator=(value);
-    return *this;
-  }
-  operator uint8_t() const {
-    auto value = Field::operator uint8_t();
+struct SMP_AVE : Field<FIFOConfiguration, 7, 5> {
+  using Base = Field<FIFOConfiguration, 7, 5>;
+  SMP_AVE() {}
+  explicit SMP_AVE(uint8_t average)
+      : Base(average >= 32   ? 0b101
+             : average >= 16 ? 0b100
+             : average >= 8  ? 0b011
+             : average >= 4  ? 0b010
+             : average > 2   ? 0x001
+                             : 0x00) {}
+  explicit operator uint8_t() const {
+    auto value = Base::operator const uint8_t &();
     value = value > 0b0101 ? 0b101 : value;
     return 1 << value;
   }
@@ -303,6 +342,12 @@ using SHDN = Bit<ModeConfiguration, 7>;
  */
 using RESET = Bit<ModeConfiguration, 6>;
 
+enum class Mode {
+  None = 0x000,
+  ParticleSensing1LED = 0b010,
+  ParticleSensing2LED = 0b011,
+  MultiLed = 0b111,
+};
 /**
  * @brief Mode Control
  *
@@ -312,43 +357,30 @@ using RESET = Bit<ModeConfiguration, 6>;
  *
  */
 struct MODE : Field<ModeConfiguration, 2, 0> {
-  enum Mode {
-    None = 0x000,
-    ParticleSensing1LED = 0b010,
-    ParticleSensing2LED = 0b011,
-    MultiLed = 0b111,
-  };
-
-  MODE(Field::REG &reg) : Field(reg) {}
+  MODE(Mode mode = Mode::None) : Field(static_cast<uint8_t>(mode)) {}
 
   uint8_t numLeds() const {
-    switch (static_cast<uint8_t>(*this)) {
-    case ParticleSensing1LED:
+    switch (static_cast<Mode>(*this)) {
+    case Mode::ParticleSensing1LED:
       return 1;
-    case ParticleSensing2LED:
+    case Mode::ParticleSensing2LED:
       return 2;
-    case MultiLed:
+    case Mode::MultiLed:
       return 3;
     default:
       return 0;
     }
   }
 
-  MODE &operator=(Mode mode) {
-    Field::operator=(mode);
-    return *this;
-  }
-
   operator Mode() const {
-    switch (Field::operator uint8_t()) {
-    case ParticleSensing1LED:
-      return ParticleSensing1LED;
-    case ParticleSensing2LED:
-      return ParticleSensing2LED;
-    case MultiLed:
-      return MultiLed;
+    const auto result = static_cast<Mode>(static_cast<uint8_t>(*this));
+    switch (result) {
+    case Mode::ParticleSensing1LED:
+    case Mode::ParticleSensing2LED:
+    case Mode::MultiLed:
+      return result;
     default:
-      return None;
+      return Mode::None;
     }
   }
 };
@@ -367,7 +399,7 @@ struct ADC_RGE : Field<SpO2Configuration, 6, 5> {
    * @brief LSB SIZE (pA)
    *
    */
-  static constexpr float LsbSize[] = {7.81, 15.63, 31.25, 62.5};
+  static constexpr std::array<float, 4> LsbSize{7.81, 15.63, 31.25, 62.5};
 
   /**
    * @brief FULL SCALE (nA)
@@ -375,14 +407,16 @@ struct ADC_RGE : Field<SpO2Configuration, 6, 5> {
    */
   static constexpr std::array<uint16_t, 4> FullScale{2048, 4096, 8192, 16384};
 
-  ADC_RGE(Field::REG &reg) : Field(reg) {}
-
-  ADC_RGE operator=(uint16_t range) {
-    const auto FullScale = ADC_RGE::FullScale; // constexpr std::upper_bound
-                                               // available only in c++26
-    Field::operator=(details::nextGratherOrEqualIndex(FullScale, range));
-    return *this;
+  static ADC_RGE fromLsbSize(const float &lsbSize) {
+    return ADC_RGE(details::nextGreaterOrEqualIndex(LsbSize, lsbSize));
   }
+
+  static ADC_RGE fromFulScale(const uint16_t &fullScale) {
+    return ADC_RGE(details::nextGreaterOrEqualIndex(FullScale, fullScale));
+  }
+
+private:
+  explicit ADC_RGE(uint8_t value) : Field(value) {}
 };
 
 /**
@@ -399,12 +433,15 @@ struct ADC_RGE : Field<SpO2Configuration, 6, 5> {
 struct SR : Field<SpO2Configuration, 4, 2> {
   static constexpr std::array<uint16_t, 8> SamplesPerSecond{
       50, 100, 200, 400, 800, 1000, 1600, 3200};
-  SR(Field::REG &reg) : Field(reg) {}
-  SR &operator=(uint16_t sampleRate) {
-    const auto SamplesPerSecond = SR::SamplesPerSecond;
-    Field::operator=(
-        details::nextGratherOrEqualIndex(SamplesPerSecond, sampleRate));
-    return *this;
+
+  SR(uint16_t samplesPerSecond)
+      : Field([&] {
+          return details::nextGreaterOrEqualIndex(SamplesPerSecond,
+                                                  samplesPerSecond);
+        }()) {}
+  operator uint16_t() const {
+    return SamplesPerSecond[static_cast<uint8_t>(
+        static_cast<const Field &>(*this))];
   }
 };
 
@@ -422,27 +459,35 @@ struct LED_PW : Field<SpO2Configuration, 1, 0> {
    * @brief PULSE WIDTH (µs)
    *
    */
-  static constexpr float PulseWidth[] = {68.95, 117.78, 215.44, 410.75};
+  static constexpr std::array<float, 4> PulseWidth{68.95, 117.78, 215.44,
+                                                   410.75};
   static constexpr std::array<uint16_t, 4> PulseWidthInt{69, 118, 215, 411};
 
   /**
    * @brief ADC RESOLUTION (bits)
    *
    */
-  static constexpr int AdcResolution[] = {15, 16, 17, 18};
+  static constexpr std::array<uint8_t, 4> AdcResolution = {15, 16, 17, 18};
 
-  LED_PW(Field::REG &reg) : Field(reg) {}
-
-  LED_PW &operator=(uint16_t pulseWidth) {
-    const auto PulseWidthInt = LED_PW::PulseWidthInt;
-    Field::operator=(
-        details::nextGratherOrEqualIndex(PulseWidthInt, pulseWidth));
-    return *this;
+  static constexpr LED_PW fromPulseWidth(float pulseWidth) {
+    return LED_PW(details::nextGreaterOrEqualIndex(PulseWidth, pulseWidth));
   }
+
+  static constexpr LED_PW fromPulseWidth(uint16_t pulseWidth) {
+    return LED_PW(details::nextGreaterOrEqualIndex(PulseWidthInt, pulseWidth));
+  }
+
+  static constexpr LED_PW fromAdcResolution(uint8_t adcResolution) {
+    return LED_PW(
+        details::nextGreaterOrEqualIndex(AdcResolution, adcResolution));
+  }
+
+private:
+  explicit constexpr LED_PW(uint8_t raw) : Field(raw) {}
 };
 
-template <uint8_t _REG> struct PARegister : Register<_REG> {
-
+template <typename _REG> struct PAField : Field<_REG> {
+  using Base = Field<_REG>;
   /**
    * @brief TYPICAL LED CURRENT (mA)*
    *
@@ -453,26 +498,26 @@ template <uint8_t _REG> struct PARegister : Register<_REG> {
    * powerLevel = 0xFF, 50.0mA - Presence detection of ~12 inch
    */
 
-  static constexpr float typicalLedCurrent(uint8_t value) {
-    return 50.f * 0xff / value;
+  static constexpr float typicalLedCurrent(uint8_t raw) {
+    return 50.f * raw / 0xff;
   } // namespace registers
 
-  PARegister &operator=(uint8_t value) {
-    Register<_REG>::operator=(value);
-    return *this;
+  static constexpr PAField fromLedCurrent(float value) {
+    return PAField(std::max(0, std::min(0xff, int(value / 50.0 * 0xff))));
   }
+  explicit constexpr PAField(uint8_t raw) : Base(raw) {}
 }; // namespace max30105
 
-using LED1_PA = PARegister<0x0c>;
-using LED2_PA = PARegister<0x0d>;
-using LED3_PA = PARegister<0x0e>;
+using LED1_PA = PAField<Register<0x0c>>;
+using LED2_PA = PAField<Register<0x0d>>;
+using LED3_PA = PAField<Register<0x0e>>;
 
 /**
  * @brief The purpose of PILOT_PA[7:0] is to set the LED power during the
  * proximity mode, as well as in Multi-LED mode.
  *
  */
-using PILOT_PA = PARegister<0x10>;
+using PILOT_PA = PAField<Register<0x10>>;
 
 enum class Slot : uint8_t {
   Disabled,
@@ -502,13 +547,11 @@ enum class Slot : uint8_t {
 
 template <typename _REG, uint8_t _LAST_BIT, uint8_t _FIRST_BIT>
 struct SlotField : Field<_REG, _LAST_BIT, _FIRST_BIT> {
-  SlotField(typename Field<_REG, _LAST_BIT, _FIRST_BIT>::REG &reg)
-      : Field<_REG, _LAST_BIT, _FIRST_BIT>(reg) {}
-  SlotField &operator=(Slot value) {
-    Field<_REG, _LAST_BIT, _FIRST_BIT>::operator=(static_cast<uint8_t>(value));
-    return *this;
+  SlotField(Slot slot)
+      : Field<_REG, _LAST_BIT, _FIRST_BIT>(static_cast<uint8_t>(slot)) {}
+  operator Slot() const {
+    return static_cast<Slot>(static_cast<uint8_t>(*this));
   }
-  operator Slot() const { return static_cast<Slot>(static_cast<uint8_t>(*this)); }
 };
 
 using MultiLedMode1 = Register<0x11>;
@@ -567,8 +610,48 @@ using TEMP_EN = Bit<Register<0x21, Access::R>, 0>;
  * 0xFF, then only a saturated ADC triggers the interrupt.
  *
  */
-using PROX_INT_THRESH = Register<0x30>;
+using PROX_INT_THRESH = Field<Register<0x30>>;
 
 using REV_ID = Register<0xFE, Access::R>;
 using PART_ID = Register<0xFF, Access::R, 0x15>;
+
+struct Configuration
+    : std::tuple<InterruptEnable1, InterruptEnable2, ModeConfiguration,
+                 FIFOConfiguration, SpO2Configuration, LED1_PA::REG,
+                 LED2_PA::REG, LED3_PA::REG, PILOT_PA::REG, MultiLedMode1,
+                 MultiLedMode2> {
+
+  template <typename _REG> const _REG &reg() const noexcept {
+    return std::get<_REG>(*this);
+  }
+  template <typename _REG> _REG &reg() noexcept {
+    return std::get<_REG>(*this);
+  }
+
+  template <typename _FIELD> _FIELD field() const noexcept {
+    _FIELD field;
+    reg<typename _FIELD::REG>() >> field;
+    return field;
+  }
+
+  template <typename _REG, uint8_t _LAST_BIT, uint8_t _FIRST_BIT>
+  Configuration &
+  operator<<(const Field<_REG, _LAST_BIT, _FIRST_BIT> &field) noexcept {
+    reg<_REG>() << field;
+    return *this;
+  }
+};
+
+template <typename _REG> struct RegName {
+  static constexpr auto name = "<Unknown>";
+};
+
+template <> struct RegName<FIFOConfiguration> {
+  static constexpr auto name = "FIFO Configuration";
+};
+
+template <> struct RegName<ModeConfiguration> {
+  static constexpr auto name = "Mode Configuration";
+};
+
 } // namespace max30105_registers
