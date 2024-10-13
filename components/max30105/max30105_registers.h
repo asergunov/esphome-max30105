@@ -662,7 +662,7 @@ template <typename _REG> struct RegTraits {
       return "FIFO Write Pointer";
     } else if constexpr (std::is_same_v<_REG, FIFO_DATA>) {
       return "FIFO Data";
-    } else if constexpr (std::is_same_v<_REG, FIFOConfiguration>) {
+    } else if constexpr (std::is_same_v<_REG, FIFO_RD_PTR::REG>) {
       return "FIFO Read Pointer";
     } else if constexpr (std::is_same_v<_REG, FIFOConfiguration>) {
       return "FIFO Configuration";
