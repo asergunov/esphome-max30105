@@ -26,8 +26,8 @@ void MAX30105Sensor::dump_config() {
   ESP_LOGCONFIG(TAG, "  PartID: %02X", static_cast<uint8_t>(_partId));
   ESP_LOGCONFIG(TAG, "  RevisionId: %02X", static_cast<uint8_t>(_revisionId));
   for_each_in_tuple(_config, [](const auto& reg){
-    using REG = std::decay_t<decltype(reg)>;
-    ESP_LOGCONFIG(TAG, "  %s(%02X): %02X", RegName<REG>::name, REG::REG_ADR,
+    using traits = RegTraits<std::decay_t<decltype(reg)>>;
+    ESP_LOGCONFIG(TAG, "  %s(%02X): %02X", traits::name, traits::address,
                     static_cast<uint8_t>(reg));
   });
   ESP_LOGCONFIG(TAG, "  State: %s", [&] {
@@ -77,21 +77,22 @@ void MAX30105Sensor::recoverConfiguration() {
   softReset([config = _config, this] {
     for_each_in_tuple(config, [&](auto& reg){
       using REG = std::decay_t<decltype(reg)>;
+      using traits = RegTraits<REG>;
       const auto& value = config.reg<REG>();
       ESP_LOGD(TAG, "Writing FIFO Configuration: %02X",
                static_cast<uint8_t>(value));
       if (!write(value)) {
-        ESP_LOGE(TAG, "Can't write %s", RegName<REG>::name);
+        ESP_LOGE(TAG, "Can't write %s", traits::name);
         status_set_error();
       }
       auto &storage = _config.reg<REG>();
       if (!read(storage)) {
-        ESP_LOGE(TAG, "Can't read %s back", RegName<REG>::name);
+        ESP_LOGE(TAG, "Can't read %s back", traits::name);
         if (storage != value) {
           ESP_LOGW(TAG,
                    "Read %s back is different. Expected: %02X, "
                    "Actual: %02X",
-                   RegName<REG>::name, value, storage);
+                   traits::name, value, storage);
         }
       }
     });

@@ -572,7 +572,7 @@ using SLOT3 = SlotField<MultiLedMode2, 2, 0>;
  *corresponds to 1°C.
  *
  */
-struct TINT : Register<0x1F, Access::R> {
+struct TINT : Field<Register<0x1F, Access::R>> {
   static constexpr int8_t decode(uint8_t value) { return value; }
 };
 
@@ -642,16 +642,59 @@ struct Configuration
   }
 };
 
-template <typename _REG> struct RegName {
-  static constexpr auto name = "<Unknown>";
-};
-
-template <> struct RegName<FIFOConfiguration> {
-  static constexpr auto name = "FIFO Configuration";
-};
-
-template <> struct RegName<ModeConfiguration> {
-  static constexpr auto name = "Mode Configuration";
+template <typename _REG> struct RegTraits {
+  static constexpr auto name = [] {
+    if constexpr (std::is_same_v<_REG, InterruptStatus1>)
+      return "Interrupt Status 1";
+    else if constexpr (std::is_same_v<_REG, InterruptStatus2>) {
+      return "Interrupt Status 2";
+    } else if constexpr (std::is_same_v<_REG, InterruptEnable1>) {
+      return "Interrupt Enable 1";
+    } else if constexpr (std::is_same_v<_REG, InterruptEnable2>) {
+      return "Interrupt Enable 2";
+    } else if constexpr (std::is_same_v<_REG, PART_ID>) {
+      return "Part ID";
+    } else if constexpr (std::is_same_v<_REG, PART_ID>) {
+      return "Revision ID";
+    } else if constexpr (std::is_same_v<_REG, OVF_COUNTER::REG>) {
+      return "FIFO Overflow Counter";
+    } else if constexpr (std::is_same_v<_REG, FIFO_WR_PTR::REG>) {
+      return "FIFO Write Pointer";
+    } else if constexpr (std::is_same_v<_REG, FIFO_DATA>) {
+      return "FIFO Data";
+    } else if constexpr (std::is_same_v<_REG, FIFOConfiguration>) {
+      return "FIFO Read Pointer";
+    } else if constexpr (std::is_same_v<_REG, FIFOConfiguration>) {
+      return "FIFO Configuration";
+    } else if constexpr (std::is_same_v<_REG, ModeConfiguration>) {
+      return "Mode Configuration";
+    } else if constexpr (std::is_same_v<_REG, SpO2Configuration>) {
+      return "SpO2 Configuration";
+    } else if constexpr (std::is_same_v<_REG, LED1_PA::REG>) {
+      return "Led1 Pulse Amplitude";
+    } else if constexpr (std::is_same_v<_REG, LED2_PA::REG>) {
+      return "Led2 Pulse Amplitude";
+    } else if constexpr (std::is_same_v<_REG, LED3_PA::REG>) {
+      return "Led3 Pulse Amplitude";
+    } else if constexpr (std::is_same_v<_REG, PILOT_PA::REG>) {
+      return "Pilot Pulse Amplitude";
+    } else if constexpr (std::is_same_v<_REG, MultiLedMode1>) {
+      return "MultiLed Mode 1";
+    } else if constexpr (std::is_same_v<_REG, MultiLedMode2>) {
+      return "MultiLed Mode 2";
+    } else if constexpr (std::is_same_v<_REG, TINT::REG>) {
+      return "Temperature Integer";
+    } else if constexpr (std::is_same_v<_REG, TFRAC::REG>) {
+      return "Temperature Integer";
+    } else if constexpr (std::is_same_v<_REG, TEMP_EN::REG>) {
+      return "Temperature Enable";
+    } else if constexpr (std::is_same_v<_REG, PROX_INT_THRESH::REG>) {
+      return "Proximity Interrupt Threshold";
+    } 
+      return "Unknown";
+  }();
+  static constexpr auto address = _REG::REG_ADR;
+  static constexpr auto powerOnState = _REG::POR_STATE;
 };
 
 } // namespace max30105_registers
