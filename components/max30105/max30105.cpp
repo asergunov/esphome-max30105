@@ -115,7 +115,10 @@ void MAX30105Sensor::recoverConfiguration() {
 void MAX30105Sensor::update() {
   auto publish_state = [](SensorData &sensor, Data &data) {
     if (sensor.sensor && sensor.sent_counter != data.counter && !data.buffer.empty()) {
+      ESP_LOGD(TAG, "Publishing sensor state");
       sensor.sensor->publish_state(data.buffer.back());
+    } else {
+      ESP_LOGV(TAG, "Sensor not published");
     }
   };
   publish_state(red_sensor_, red_);
@@ -244,7 +247,7 @@ void MAX30105Sensor::loop() {
       ++data.counter;
       while (container.size() > _pointLimit)
         container.pop_front();
-      ESP_LOGV(TAG, "Decode value: %ui. Counter %ui. Queue size: ", result, data.counter, container.size());
+      ESP_LOGV(TAG, "Decode value: %u. Counter %u. Queue size: %u", result, data.counter, container.size());
     };
 
     for (uint8_t i = 0; i < samplesToRead; ++i) {
