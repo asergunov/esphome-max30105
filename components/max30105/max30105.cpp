@@ -25,10 +25,10 @@ void MAX30105Sensor::dump_config() {
   }
   ESP_LOGCONFIG(TAG, "  PartID: %02X", static_cast<uint8_t>(_partId));
   ESP_LOGCONFIG(TAG, "  RevisionId: %02X", static_cast<uint8_t>(_revisionId));
-  for_each_in_tuple(_config, [](const auto& reg){
+  for_each_in_tuple(_config, [](const auto &reg) {
     using traits = RegTraits<std::decay_t<decltype(reg)>>;
     ESP_LOGCONFIG(TAG, "  %s(%02X): %02X", traits::name, traits::address,
-                    static_cast<uint8_t>(reg));
+                  static_cast<uint8_t>(reg));
   });
   ESP_LOGCONFIG(TAG, "  State: %s", [&] {
     switch (_state) {
@@ -78,49 +78,39 @@ void MAX30105Sensor::recoverConfiguration() {
     for_each_in_tuple(config, [&](auto& reg){
       using REG = std::decay_t<decltype(reg)>;
       using traits = RegTraits<REG>;
-      const auto& value = config.reg<REG>();
-      ESP_LOGD(TAG, "Writing FIFO Configuration: %02X",
-               static_cast<uint8_t>(value));
-      if (!write(value)) {
-        ESP_LOGE(TAG, "Can't write %s", traits::name);
-        status_set_error();
-      }
+      const auto &value = config.reg<REG>();
+      if (!write(value))
+        return;
       auto &storage = _config.reg<REG>();
-      if (!read(storage)) {
-        ESP_LOGE(TAG, "Can't read %s back", traits::name);
-        if (storage != value) {
-          ESP_LOGW(TAG,
-                   "Read %s back is different. Expected: %02X, "
-                   "Actual: %02X",
-                   traits::name, value, storage);
-        }
+      if (!read(storage))
+        return;
+      if (storage != value) {
+        ESP_LOGW(TAG,
+                 "Read %s back is different. Expected: %02X, "
+                 "Actual: %02X",
+                 traits::name, value, storage);
       }
-    });
-
-    ESP_LOGD(TAG, "Resetting Read Pointer");
-    FIFO_RD_PTR::REG rdReg;
-    rdReg << FIFO_RD_PTR(0);
-    if (!this->write(rdReg)) {
-      ESP_LOGE(TAG, "Can't write FIFO Read Pointer");
-      status_set_error();
-    }
-
-    ESP_LOGD(TAG, "Resetting Write Pointer");
-    FIFO_WR_PTR::REG wrReg;
-    wrReg << FIFO_WR_PTR(0);
-    if (!this->write(wrReg)) {
-      ESP_LOGE(TAG, "Can't write FIFO Write Pointer");
-      status_set_error();
-    }
-
-    ESP_LOGD(TAG, "Resetting Overflow Counter");
-    OVF_COUNTER::REG ovReg;
-    ovReg << OVF_COUNTER(0);
-    if (!this->write(ovReg)) {
-      ESP_LOGE(TAG, "Can't write Overflow Counter");
-      status_set_error();
-    }
+      }
   });
+
+  ESP_LOGD(TAG, "Resetting Read Pointer");
+  FIFO_RD_PTR::REG rdReg;
+  rdReg << FIFO_RD_PTR(0);
+  if (!this->write(rdReg))
+    return;
+
+  ESP_LOGD(TAG, "Resetting Write Pointer");
+  FIFO_WR_PTR::REG wrReg;
+  wrReg << FIFO_WR_PTR(0);
+  if (!this->write(wrReg))
+    return;
+
+  ESP_LOGD(TAG, "Resetting Overflow Counter");
+  OVF_COUNTER::REG ovReg;
+  ovReg << OVF_COUNTER(0);
+  if (!this->write(ovReg))
+    return;
+});
 }
 
 void MAX30105Sensor::update() {
@@ -151,8 +141,6 @@ bool MAX30105Sensor::softReset(std::function<void()> doAfterReset) {
 void MAX30105Sensor::loop() {
   if (_state == Reseting) {
     if (!read(_config.reg<RESET::REG>())) {
-      ESP_LOGE(TAG, "Can't get FIFO_RD_PTR");
-      status_set_error();
       return;
     }
     if (_config.field<RESET>()) {
@@ -170,8 +158,6 @@ void MAX30105Sensor::loop() {
 
   InterruptStatus1 int1;
   if (!read(int1)) {
-    ESP_LOGE(TAG, "Can't get InterruptStatus1");
-    status_set_error();
     return;
   }
 
@@ -200,11 +186,9 @@ void MAX30105Sensor::loop() {
   }
 
   if (_needReset) {
-    auto& reg = _config.reg<RESET::REG>();
+    auto &reg = _config.reg<RESET::REG>();
     reg << RESET(true);
     if (!write(reg)) {
-      ESP_LOGE(TAG, "Cant write Mode Configuration");
-      status_set_error();
       return;
     }
     _state = Reseting;
@@ -214,8 +198,6 @@ void MAX30105Sensor::loop() {
 
   InterruptStatus2 int2;
   if (!read(int2)) {
-    ESP_LOGE(TAG, "Can't get InterruptStatus2");
-    status_set_error();
     return;
   }
 
@@ -228,13 +210,9 @@ void MAX30105Sensor::loop() {
     FIFO_RD_PTR::REG rdReg;
     FIFO_WR_PTR::REG wrReg;
     if (!this->read(rdReg)) {
-      ESP_LOGE(TAG, "Can't get FIFO_RD_PTR");
-      status_set_error();
       return;
     }
     if (!this->read(wrReg)) {
-      ESP_LOGE(TAG, "Can't get FIFO_WR_PTR");
-      status_set_error();
       return;
     }
 
@@ -251,8 +229,6 @@ void MAX30105Sensor::loop() {
     uint8_t buffer[32 * 3 * 12];
     //   assert(bytesToRead < sizeof(buffer));
     if (!this->read_bytes(FIFO_DATA::REG_ADR, buffer, bytesToRead)) {
-      ESP_LOGE(TAG, "Can't get DATA");
-      status_set_error();
       return;
     }
 

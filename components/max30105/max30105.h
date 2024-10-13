@@ -41,13 +41,30 @@ public:
   void recoverConfiguration();
 
 protected:
-
-  template <typename T> bool read(T &reg) {
-    ESP_LOGV(TAG, "Reading ")
-    return i2c::I2CDevice::read_byte(T::REG_ADR, &static_cast<uint8_t &>(reg));
+  template <typename REG> bool read(REG &reg) {
+    auto &&result =
+        i2c::I2CDevice::read_byte(REG::REG_ADR, &static_cast<uint8_t &>(reg));
+    if (result) {
+      ESP_LOGV(TAG, "Read %s(%02X): %02X", RegTraits<REG>::name,
+               RegTraits<REG>::address, static_cast<uint8_t>(reg));
+    } else {
+      ESP_LOGE(TAG, "Can't read %s(%02X) register.", RegTraits<REG>::name,
+               RegTraits<REG>::address);
+      status_set_error();
+    }
+    return result;
   }
-  template <typename T> bool write(const T &reg) {
-    return i2c::I2CDevice::write_byte(T::REG_ADR, reg);
+  template <typename REG> bool write(const REG &reg) {
+    auto &&result = i2c::I2CDevice::write_byte(REG::REG_ADR, reg);
+    if (result) {
+      ESP_LOGV(TAG, "Wrote %s(%02X): %02X", RegTraits<REG>::name,
+               RegTraits<REG>::address, static_cast<uint8_t>(reg));
+    } else {
+      ESP_LOGE(TAG, "Can't write %s(%02X) register.", RegTraits<REG>::name,
+               RegTraits<REG>::address);
+      status_set_error();
+    }
+    return result;
   }
 
   // Config
