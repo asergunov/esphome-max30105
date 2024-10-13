@@ -42,11 +42,17 @@ public:
 
 protected:
   template <typename REG> bool read(REG &reg) {
+    const auto prevValue = static_cast<uint8_t>(reg);
     auto &&result =
         i2c::I2CDevice::read_byte(REG::REG_ADR, &static_cast<uint8_t &>(reg));
     if (result) {
-      ESP_LOGV(TAG, "Read %s(%02X): %02X", RegTraits<REG>::name,
-               RegTraits<REG>::address, static_cast<uint8_t>(reg));
+      ESP_LOGVV(TAG, "Read %s(%02X): %02X", RegTraits<REG>::name,
+                RegTraits<REG>::address, static_cast<uint8_t>(reg));
+      if (prevValue != static_cast<uint8_t>(reg)) {
+        ESP_LOGV(TAG, "Value changed %s(%02X): %02X -> %02X",
+                 RegTraits<REG>::name, RegTraits<REG>::address, prevValue,
+                 static_cast<uint8_t>(reg));
+      }
     } else {
       ESP_LOGE(TAG, "Can't read %s(%02X) register.", RegTraits<REG>::name,
                RegTraits<REG>::address);
