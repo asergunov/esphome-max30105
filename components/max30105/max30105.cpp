@@ -242,9 +242,9 @@ void MAX30105Sensor::loop() {
         result = (result << 8) + *(p++);
       container.push_back(result);
       ++data.counter;
-      ESP_LOGV(TAG, "Decode value: %ui. Counter %ui", result, data.counter);
       while (container.size() > _pointLimit)
         container.pop_front();
+      ESP_LOGV(TAG, "Decode value: %ui. Counter %ui. Queue size: ", result, data.counter, container.size());
     };
 
     for (uint8_t i = 0; i < samplesToRead; ++i) {
