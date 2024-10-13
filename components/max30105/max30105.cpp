@@ -133,6 +133,7 @@ bool MAX30105Sensor::softReset(std::function<void()> doAfterReset) {
     return false;
   }
 
+  _needReset = true;
   _doAfterReset = doAfterReset;
   return true;
 }
