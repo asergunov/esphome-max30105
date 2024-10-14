@@ -9,12 +9,13 @@ namespace esphome {
 namespace max30105 {
 
 MAX30105Sensor::MAX30105Sensor() {
-  _config << FIFO_ROLLOVER_EN(true) << SMP_AVE(4) << MODE(Mode::MultiLed)
-          << ADC_RGE::fromFulScale(4096) << SR(400)
+  _config << FIFO_ROLLOVER_EN(true) << SMP_AVE(32) << MODE(Mode::MultiLed)
+          << ADC_RGE::fromFulScale(4096) << SR(50)
           << LED_PW::fromPulseWidth(uint16_t(411)) << LED1_PA(0x1f)
           << LED2_PA(0x1f) << LED3_PA(0x1f) << PILOT_PA(0x1f)
           << SLOT1(Slot::LedRed) << SLOT2(Slot::LedGreen) << SLOT3(Slot::LedIR)
-          << SLOT4(Slot::Disabled);
+          << SLOT4(Slot::Disabled) << FIFO_RD_PTR(0) << FIFO_WR_PTR(0)
+          << OVF_COUNTER(0);
 }
 
 void MAX30105Sensor::dump_config() {
@@ -74,12 +75,17 @@ void MAX30105Sensor::setup() {
 void MAX30105Sensor::recoverConfiguration() {
   _needReset = false;
   _state = Ready;
-  softReset([config = _config, this] {
+  softReset([config = _config, this] () mutable {
+    config << FIFO_RD_PTR(0) << FIFO_WR_PTR(0) << OVF_COUNTER(0);
     for_each_in_tuple(config, [&](auto &reg) {
       using REG = std::decay_t<decltype(reg)>;
       using traits = RegTraits<REG>;
       const auto &value = config.reg<REG>();
       if (!write(value))
+        return;
+      if constexpr (std::is_same_v<REG, FIFO_RD_PTR::REG> ||
+                    std::is_same_v<REG, FIFO_WR_PTR::REG> ||
+                    std::is_same_v<REG, OVF_COUNTER::REG>)
         return;
       auto &storage = _config.reg<REG>();
       if (!read(storage))
@@ -91,24 +97,6 @@ void MAX30105Sensor::recoverConfiguration() {
                  traits::name, value, storage);
       }
     });
-
-    ESP_LOGD(TAG, "Resetting Read Pointer");
-    FIFO_RD_PTR::REG rdReg;
-    rdReg << FIFO_RD_PTR(0);
-    if (!this->write(rdReg))
-      return;
-
-    ESP_LOGD(TAG, "Resetting Write Pointer");
-    FIFO_WR_PTR::REG wrReg;
-    wrReg << FIFO_WR_PTR(0);
-    if (!this->write(wrReg))
-      return;
-
-    ESP_LOGD(TAG, "Resetting Overflow Counter");
-    OVF_COUNTER::REG ovReg;
-    ovReg << OVF_COUNTER(0);
-    if (!this->write(ovReg))
-      return;
   });
 }
 
@@ -212,7 +200,8 @@ void MAX30105Sensor::loop() {
   }
 
   if (true || dataReady) {
-    ;
+    auto& rdReg = _config.reg<FIFO_RD_PTR::REG>();
+    auto& wrReg = _config.reg<FIFO_WR_PTR::REG>();
     if (!this->read(rdReg)) {
       return;
     }
@@ -227,13 +216,29 @@ void MAX30105Sensor::loop() {
       return;
     }
 
-    const auto numLeds = _config.field<MODE>().numLeds();
+    const auto& ledSlots = _config.ledSlots();
+    const auto& numLeds = [&ledSlots]{
+      uint8_t result = 0;
+      for(const auto& slot : ledSlots) {
+        switch (slot) {
+          case Slot::Led1:
+          case Slot::Led2:
+          case Slot::Led3:
+          case Slot::Led1Pilot:
+          case Slot::Led2Pilot:
+          case Slot::Led3Pilot:
+            ++ result;
+            break;
+        }
+      }
+      return result;
+    }();
     const uint16_t bytesToRead = samplesToRead * numLeds * 3;
 
     ESP_LOGV(TAG, "Samples to read: %u. Bytes to read: %u", samplesToRead,
              bytesToRead);
 
-    uint8_t buffer[32 * 3 * 12];
+    uint8_t buffer[bytesToRead];
     if (bytesToRead > sizeof(buffer)) {
       ESP_LOGE(TAG,
                "Buffer too small for available data. Want to read %u bytes, "
@@ -263,12 +268,21 @@ void MAX30105Sensor::loop() {
                data.counter, container.size());
     };
 
-    for (uint8_t i = 0; i < samplesToRead; ++i) {
-      decode_to(red_);
-      if (numLeds > 1)
-        decode_to(green_);
-      if (numLeds > 2)
-        decode_to(ir_);
+    for(const auto& slot : ledSlots) {
+      switch (slot) {
+          case Slot::LedRed:
+          case Slot::LedRedPilot:
+            decode_to(red_);
+            break;
+          case Slot::LedGreen:
+          case Slot::LedGreenPilot:
+            decode_to(green_);
+            break;
+          case Slot::LedIR:
+          case Slot::LedIRPilot:
+            decode_to(ir_);
+            break;
+        }
     }
   }
   status_clear_error();

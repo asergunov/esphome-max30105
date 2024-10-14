@@ -2,6 +2,7 @@
 /// https://cdn.sparkfun.com/assets/learn_tutorials/5/7/7/MAX30105_3.pdf
 #pragma once
 
+#include "esphome/components/max30105/max30105_registers.h"
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -359,19 +360,6 @@ enum class Mode {
 struct MODE : Field<ModeConfiguration, 2, 0> {
   MODE(Mode mode = Mode::None) : Field(static_cast<uint8_t>(mode)) {}
 
-  uint8_t numLeds() const {
-    switch (static_cast<Mode>(*this)) {
-    case Mode::ParticleSensing1LED:
-      return 1;
-    case Mode::ParticleSensing2LED:
-      return 2;
-    case Mode::MultiLed:
-      return 3;
-    default:
-      return 0;
-    }
-  }
-
   operator Mode() const {
     const auto result = static_cast<Mode>(static_cast<uint8_t>(*this));
     switch (result) {
@@ -547,7 +535,7 @@ enum class Slot : uint8_t {
 
 template <typename _REG, uint8_t _LAST_BIT, uint8_t _FIRST_BIT>
 struct SlotField : Field<_REG, _LAST_BIT, _FIRST_BIT> {
-  SlotField(Slot slot)
+  SlotField(Slot slot = Slot::Disabled)
       : Field<_REG, _LAST_BIT, _FIRST_BIT>(static_cast<uint8_t>(slot)) {}
   operator Slot() const {
     return static_cast<Slot>(static_cast<uint8_t>(*this));
@@ -619,7 +607,8 @@ struct Configuration
     : std::tuple<InterruptEnable1, InterruptEnable2, ModeConfiguration,
                  FIFOConfiguration, SpO2Configuration, LED1_PA::REG,
                  LED2_PA::REG, LED3_PA::REG, PILOT_PA::REG, MultiLedMode1,
-                 MultiLedMode2> {
+                 MultiLedMode2, FIFO_RD_PTR::REG, FIFO_WR_PTR::REG,
+                 OVF_COUNTER::REG> {
 
   template <typename _REG> const _REG &reg() const noexcept {
     return std::get<_REG>(*this);
@@ -639,6 +628,19 @@ struct Configuration
   operator<<(const Field<_REG, _LAST_BIT, _FIRST_BIT> &field) noexcept {
     reg<_REG>() << field;
     return *this;
+  }
+
+  std::array<Slot, 4> ledSlots() {
+    const auto &mode = field<MODE>();
+    switch (static_cast<Mode>(mode)) {
+    case Mode::ParticleSensing1LED:
+      return {Slot::LedRed, Slot::Disabled, Slot::Disabled, Slot::Disabled};
+    case Mode::ParticleSensing2LED:
+      return {Slot::LedRed, Slot::LedIR, Slot::Disabled, Slot::Disabled};
+    case Mode::MultiLed:
+      return {field<SLOT1>(), field<SLOT2>(), field<SLOT3>(), field<SLOT4>()};
+    }
+    return {Slot::Disabled, Slot::Disabled, Slot::Disabled, Slot::Disabled};
   }
 };
 
@@ -690,8 +692,8 @@ template <typename _REG> struct RegTraits {
       return "Temperature Enable";
     } else if constexpr (std::is_same_v<_REG, PROX_INT_THRESH::REG>) {
       return "Proximity Interrupt Threshold";
-    } 
-      return "Unknown";
+    }
+    return "Unknown";
   }();
   static constexpr auto address = _REG::REG_ADR;
   static constexpr auto powerOnState = _REG::POR_STATE;
