@@ -75,7 +75,7 @@ void MAX30105Sensor::setup() {
 void MAX30105Sensor::recoverConfiguration() {
   _needReset = false;
   _state = Ready;
-  softReset([config = _config, this] () mutable {
+  softReset([config = _config, this]() mutable {
     config << FIFO_RD_PTR(0) << FIFO_WR_PTR(0) << OVF_COUNTER(0);
     for_each_in_tuple(config, [&](auto &reg) {
       using REG = std::decay_t<decltype(reg)>;
@@ -200,8 +200,8 @@ void MAX30105Sensor::loop() {
   }
 
   if (true || dataReady) {
-    auto& rdReg = _config.reg<FIFO_RD_PTR::REG>();
-    auto& wrReg = _config.reg<FIFO_WR_PTR::REG>();
+    auto &rdReg = _config.reg<FIFO_RD_PTR::REG>();
+    auto &wrReg = _config.reg<FIFO_WR_PTR::REG>();
     if (!this->read(rdReg)) {
       return;
     }
@@ -216,27 +216,30 @@ void MAX30105Sensor::loop() {
       return;
     }
 
-    const auto& ledSlots = _config.ledSlots();
-    const auto& numLeds = [&ledSlots]{
+    const auto &ledSlots = _config.ledSlots();
+    const auto &numLeds = [&ledSlots] {
       uint8_t result = 0;
-      for(const auto& slot : ledSlots) {
+      for (const auto &slot : ledSlots) {
         switch (slot) {
-          case Slot::Led1:
-          case Slot::Led2:
-          case Slot::Led3:
-          case Slot::Led1Pilot:
-          case Slot::Led2Pilot:
-          case Slot::Led3Pilot:
-            ++ result;
-            break;
+        case Slot::Led1:
+        case Slot::Led2:
+        case Slot::Led3:
+        case Slot::Led1Pilot:
+        case Slot::Led2Pilot:
+        case Slot::Led3Pilot:
+          ++result;
+          break;
         }
       }
       return result;
     }();
     const uint16_t bytesToRead = samplesToRead * numLeds * 3;
 
-    ESP_LOGV(TAG, "Samples to read: %u. Bytes to read: %u", samplesToRead,
-             bytesToRead);
+    ESP_LOGV(TAG,
+             "Samples to read: %u. Bytes to read: %u. NumLeds: %u. Led Slots: "
+             "(%u, %u, %u, %u).",
+             samplesToRead, bytesToRead, numLeds, ledSlots[0].ledSlots[1],
+             ledSlots[2], ledSlots[3]);
 
     uint8_t buffer[bytesToRead];
     if (bytesToRead > sizeof(buffer)) {
@@ -264,25 +267,35 @@ void MAX30105Sensor::loop() {
       ++data.counter;
       while (container.size() > _pointLimit)
         container.pop_front();
-      ESP_LOGV(TAG, "Decode value: %u. Counter %u. Queue size: %u", result,
-               data.counter, container.size());
+      ESP_LOGV(
+          TAG, "Decode %s value: %u. Counter %u. Queue size: %u",
+          [&] {
+            if (&data == &red_)
+              return "Red";
+            else if (&data == &green_)
+              return "Green";
+            else if (&data == &ir_)
+              return "IR";
+            retunr "Unknown";
+          }() result,
+          data.counter, container.size());
     };
 
-    for(const auto& slot : ledSlots) {
+    for (const auto &slot : ledSlots) {
       switch (slot) {
-          case Slot::LedRed:
-          case Slot::LedRedPilot:
-            decode_to(red_);
-            break;
-          case Slot::LedGreen:
-          case Slot::LedGreenPilot:
-            decode_to(green_);
-            break;
-          case Slot::LedIR:
-          case Slot::LedIRPilot:
-            decode_to(ir_);
-            break;
-        }
+      case Slot::LedRed:
+      case Slot::LedRedPilot:
+        decode_to(red_);
+        break;
+      case Slot::LedGreen:
+      case Slot::LedGreenPilot:
+        decode_to(green_);
+        break;
+      case Slot::LedIR:
+      case Slot::LedIRPilot:
+        decode_to(ir_);
+        break;
+      }
     }
   }
   status_clear_error();
