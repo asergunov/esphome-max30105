@@ -84,7 +84,7 @@ private:
 template <typename _REG, uint8_t _LAST_BIT, uint8_t _FIRST_BIT> struct Field {
   static constexpr auto BEGIN_BIT = _FIRST_BIT;
   static constexpr auto END_BIT = _LAST_BIT + 1;
-  static constexpr auto MASK = ((1u << END_BIT) - 1u) << BEGIN_BIT;
+  static constexpr auto MASK = ((1u << (END_BIT - BEGIN_BIT)) - 1u) << BEGIN_BIT;
   using REG = _REG;
 
   Field() {}
