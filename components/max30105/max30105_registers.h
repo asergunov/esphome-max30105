@@ -508,11 +508,12 @@ using LED3_PA = PAField<Register<0x0e>>;
 using PILOT_PA = PAField<Register<0x10>>;
 
 enum class Slot : uint8_t {
-  Disabled,
+  None,
   Led1, ///< Red, LED1_PA
   Led2, ///< IR, LED2_PA
   Led3, ///< Green, LED3_PA
-  None,
+  NonePilot,
+
   Led1Pilot, ///< Red, PILOT_PA
   Led2Pilot, ///< IR, PILOT_PA
   Led3Pilot, ///< Green, PILOT_PA
@@ -535,10 +536,11 @@ enum class Slot : uint8_t {
 
 template <typename _REG, uint8_t _LAST_BIT, uint8_t _FIRST_BIT>
 struct SlotField : Field<_REG, _LAST_BIT, _FIRST_BIT> {
-  SlotField(Slot slot = Slot::Disabled)
-      : Field<_REG, _LAST_BIT, _FIRST_BIT>(static_cast<uint8_t>(slot)) {}
+  using Base = Field<_REG, _LAST_BIT, _FIRST_BIT>;
+  SlotField(Slot slot = Slot::None) : Base(static_cast<uint8_t>(slot)) {}
   operator Slot() const {
-    return static_cast<Slot>(static_cast<uint8_t>(*this));
+    const auto &value = static_cast<uint8_t>(*static_cast<const Base &>(*this));
+    return value <= 0b111 ? static_cast<Slot>(value) : Slot::None;
   }
 };
 
