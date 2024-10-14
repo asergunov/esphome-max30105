@@ -1,5 +1,6 @@
 #include "max30105.h"
 
+#include "esphome/components/max30105/max30105_registers.h"
 #include "max30105_registers.h"
 #include <cassert>
 #include <cstdint>
@@ -200,6 +201,15 @@ void MAX30105Sensor::loop() {
   }
 
   if (true || dataReady) {
+    if (!this->read(_config.reg<MODE::REG>()))
+      return;
+    if (_config.field<MODE>() == Mode::MultiLed) {
+      if (!this->read(_config.reg<MultiLedMode1>()))
+        return;
+      if (!this->read(_config.reg<MultiLedMode2>()))
+        return;
+    }
+
     auto &rdReg = _config.reg<FIFO_RD_PTR::REG>();
     auto &wrReg = _config.reg<FIFO_WR_PTR::REG>();
     if (!this->read(rdReg)) {
