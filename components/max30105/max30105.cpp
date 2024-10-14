@@ -238,7 +238,7 @@ void MAX30105Sensor::loop() {
     ESP_LOGV(TAG,
              "Samples to read: %u. Bytes to read: %u. NumLeds: %u. Led Slots: "
              "(%u, %u, %u, %u).",
-             samplesToRead, bytesToRead, numLeds, ledSlots[0].ledSlots[1],
+             samplesToRead, bytesToRead, numLeds, ledSlots[0], ledSlots[1],
              ledSlots[2], ledSlots[3]);
 
     uint8_t buffer[bytesToRead];
