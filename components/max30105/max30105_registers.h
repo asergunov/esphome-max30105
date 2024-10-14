@@ -636,13 +636,13 @@ struct Configuration
     const auto &mode = field<MODE>();
     switch (static_cast<Mode>(mode)) {
     case Mode::ParticleSensing1LED:
-      return {Slot::LedRed, Slot::Disabled, Slot::Disabled, Slot::Disabled};
+      return {Slot::LedRed, Slot::None, Slot::None, Slot::None};
     case Mode::ParticleSensing2LED:
-      return {Slot::LedRed, Slot::LedIR, Slot::Disabled, Slot::Disabled};
+      return {Slot::LedRed, Slot::LedIR, Slot::None, Slot::None};
     case Mode::MultiLed:
       return {field<SLOT1>(), field<SLOT2>(), field<SLOT3>(), field<SLOT4>()};
     }
-    return {Slot::Disabled, Slot::Disabled, Slot::Disabled, Slot::Disabled};
+    return {Slot::None, Slot::None, Slot::None, Slot::None};
   }
 };
 
