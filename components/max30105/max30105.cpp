@@ -114,7 +114,8 @@ void MAX30105Sensor::recoverConfiguration() {
 
 void MAX30105Sensor::update() {
   auto publish_state = [](SensorData &sensor, Data &data) {
-    if (sensor.sensor && sensor.sent_counter != data.counter && !data.buffer.empty()) {
+    if (sensor.sensor && sensor.sent_counter != data.counter &&
+        !data.buffer.empty()) {
       ESP_LOGD(TAG, "Publishing sensor state");
       sensor.sensor->publish_state(data.buffer.back());
       sensor.sent_counter = data.counter;
@@ -210,7 +211,8 @@ void MAX30105Sensor::loop() {
     ESP_LOGD(TAG, "Die Temperature Ready");
   }
 
-  if (true || dataReady) {;
+  if (true || dataReady) {
+    ;
     if (!this->read(rdReg)) {
       return;
     }
@@ -218,8 +220,8 @@ void MAX30105Sensor::loop() {
       return;
     }
 
-    const uint8_t samplesToRead =
-        (FIFO_WR_PTR(wrReg) - FIFO_RD_PTR(rdReg)) % 32;
+    const auto &samplesToRead =
+        static_cast<uint8_t>(FIFO_WR_PTR(wrReg) - FIFO_RD_PTR(rdReg)) % 32;
     if (samplesToRead == 0) {
       // nothing to read
       return;
@@ -228,10 +230,19 @@ void MAX30105Sensor::loop() {
     const auto numLeds = _config.field<MODE>().numLeds();
     const uint16_t bytesToRead = samplesToRead * numLeds * 3;
 
-    ESP_LOGV(TAG, "Samples to read: %ui. Bytes to read: %ui", samplesToRead, bytesToRead);
-    
+    ESP_LOGV(TAG, "Samples to read: %u. Bytes to read: %u", samplesToRead,
+             bytesToRead);
+
     uint8_t buffer[32 * 3 * 12];
-    //   assert(bytesToRead < sizeof(buffer));
+    if (bytesToRead > sizeof(buffer)) {
+      ESP_LOGE(TAG,
+               "Buffer too small for available data. Want to read %u bytes, "
+               "but buffer size is %u. This means there is an error in finding "
+               "out buffer size.",
+               bytesToRead, sizeof(buffer));
+      status_set_error();
+      return;
+    }
     if (!this->read_bytes(FIFO_DATA::REG_ADR, buffer, bytesToRead)) {
       ESP_LOGE(TAG, "Can't read FIFO DATA");
       status_set_error();
@@ -240,7 +251,7 @@ void MAX30105Sensor::loop() {
 
     auto *p = buffer;
     auto decode_to = [&](Data &data) {
-      auto&& container = data.buffer;
+      auto &&container = data.buffer;
       uint32_t result = 0;
       for (uint8_t i = 0; i < 3; ++i)
         result = (result << 8) + *(p++);
@@ -248,7 +259,8 @@ void MAX30105Sensor::loop() {
       ++data.counter;
       while (container.size() > _pointLimit)
         container.pop_front();
-      ESP_LOGV(TAG, "Decode value: %u. Counter %u. Queue size: %u", result, data.counter, container.size());
+      ESP_LOGV(TAG, "Decode value: %u. Counter %u. Queue size: %u", result,
+               data.counter, container.size());
     };
 
     for (uint8_t i = 0; i < samplesToRead; ++i) {
@@ -259,6 +271,7 @@ void MAX30105Sensor::loop() {
         decode_to(ir_);
     }
   }
+  status_clear_error();
 }
 
 } // namespace max30105
