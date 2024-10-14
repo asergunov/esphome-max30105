@@ -117,6 +117,7 @@ void MAX30105Sensor::update() {
     if (sensor.sensor && sensor.sent_counter != data.counter && !data.buffer.empty()) {
       ESP_LOGD(TAG, "Publishing sensor state");
       sensor.sensor->publish_state(data.buffer.back());
+      sensor.sent_counter = data.counter;
     } else {
       ESP_LOGV(TAG, "Sensor not published");
     }
@@ -239,7 +240,7 @@ void MAX30105Sensor::loop() {
 
     auto *p = buffer;
     auto decode_to = [&](Data &data) {
-      auto container = data.buffer;
+      auto&& container = data.buffer;
       uint32_t result = 0;
       for (uint8_t i = 0; i < 3; ++i)
         result = (result << 8) + *(p++);
