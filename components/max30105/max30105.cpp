@@ -15,7 +15,7 @@ MAX30105Sensor::MAX30105Sensor() {
           << LED_PW::fromPulseWidth(uint16_t(411)) << LED1_PA(0x1f)
           << LED2_PA(0x1f) << LED3_PA(0x1f) << PILOT_PA(0x1f)
           << SLOT1(Slot::LedRed) << SLOT2(Slot::LedGreen) << SLOT3(Slot::LedIR)
-          << SLOT4(Slot::Disabled) << FIFO_RD_PTR(0) << FIFO_WR_PTR(0)
+          << SLOT4(Slot::None) << FIFO_RD_PTR(0) << FIFO_WR_PTR(0)
           << OVF_COUNTER(0);
 }
 

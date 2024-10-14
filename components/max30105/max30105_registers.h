@@ -539,7 +539,7 @@ struct SlotField : Field<_REG, _LAST_BIT, _FIRST_BIT> {
   using Base = Field<_REG, _LAST_BIT, _FIRST_BIT>;
   SlotField(Slot slot = Slot::None) : Base(static_cast<uint8_t>(slot)) {}
   operator Slot() const {
-    const auto &value = static_cast<uint8_t>(*static_cast<const Base &>(*this));
+    const auto &value = static_cast<uint8_t>(static_cast<const Base &>(*this));
     return value <= 0b111 ? static_cast<Slot>(value) : Slot::None;
   }
 };
