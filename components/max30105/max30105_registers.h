@@ -65,7 +65,7 @@ struct Register {
   const Register &
   operator>>(Field<Register, _LAST_BIT, _FIRST_BIT> &field) const {
     using Field = Field<Register, _LAST_BIT, _FIRST_BIT>;
-    field = Field((value >> Field::BEGIN_BIT) & Field::MASK);
+    field = Field((value & Field::MASK) >> Field::BEGIN_BIT );
     return *this;
   }
 
