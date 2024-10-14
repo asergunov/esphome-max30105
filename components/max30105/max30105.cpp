@@ -276,9 +276,9 @@ void MAX30105Sensor::loop() {
               return "Green";
             else if (&data == &ir_)
               return "IR";
-            retunr "Unknown";
-          }() result,
-          data.counter, container.size());
+            return "Unknown";
+          }(),
+          result, data.counter, container.size());
     };
 
     for (const auto &slot : ledSlots) {
