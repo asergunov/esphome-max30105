@@ -101,7 +101,7 @@ protected:
       }
     }
 
-    void push(ValueType value)
+    void push(const ValueType& value) {
       sum += value;
       ++count;
     }
