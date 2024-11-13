@@ -96,9 +96,8 @@ protected:
 
     template<typename I>
     void push(I begin, const I end) {
-      for(; begin != end; ++begin) {
-        push(*begin)
-      }
+      for(; begin != end; ++begin) 
+        push(*begin);
     }
 
     void push(const ValueType& value) {
