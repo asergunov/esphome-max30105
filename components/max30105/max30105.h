@@ -88,11 +88,40 @@ protected:
   Configuration _config;
 
   using counter_type = uint32_t;
+
+  template<typename ValueType, typename SumType = ValueType>
+  struct Avaraging {
+    SumType sum = 0;
+    counter_type count = 0;
+
+    template<typename I>
+    void push(I begin, const I end) {
+      for(; begin != end; ++begin) {
+        push(*begin)
+      }
+    }
+
+    void push(ValueType value)
+      sum += value;
+      ++count;
+    }
+
+    ValueType extract() {
+      const auto ret = sum/count;
+      sum = 0;
+      count = 0;
+      return ret;
+    }
+  };
+
   // Buffers
   struct Data {
     std::deque<uint32_t> buffer;
     counter_type counter = 0;
+    
+    Avaraging<uint32_t> avg;
   };
+
   Data red_;
   Data green_;
   Data ir_;
@@ -101,6 +130,7 @@ protected:
   FIFO_RD_PTR::REG rdReg;
   FIFO_WR_PTR::REG wrReg;
 
+  
   struct SensorData {
     sensor::Sensor *sensor{nullptr};
     counter_type sent_counter = 0;
